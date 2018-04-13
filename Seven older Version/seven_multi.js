@@ -14,7 +14,7 @@ var root = new File(dc.getDirectory());
 	var area_band = new Array(); // global array for area of band 
 	var intensity_per_fp = new Array(); // global array for filopod tip intensity
 //	var acqname = "Capture "; // KJP convention - Default prefix for input files
-	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
+	var acqname = root.getName()+" - "; // ALA convention - Default prefix for input files
 
 //    IJ.showMessage("acqname", acqname); 
 seven_multi(root, acqname);

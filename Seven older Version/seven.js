@@ -373,7 +373,6 @@ function ScanLine(img, dir, name, pixelwidth, index) {
 // Analysis for counting filopodia tips and registering to cells 
 function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) { 
 	// get raw image stats
-	
 	var stats = img1.getStatistics(MEASUREMENTS); 
 	var bgval = stats.dmode; // use instead of minval - this is black level of whole image
 	var minSNR = 3; 
@@ -448,10 +447,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
  
 	if (!skiptips) { 
 		//Calculate radial distribution 
-		var tipdata = "";
-		var sampletab = new Packages.ij.measure.ResultsTable(); 
-		var mpp = 0.21164;
-		sampletab.setPrecision(digits);
 		img2.setColor(Color.WHITE); 
 		// Scan in radial pattern (approx 5 um diameter; original radius 12 px at 63X) 
 		var scan_width = 5; 
@@ -577,43 +572,19 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		// Second pass to save zeroscans of filopod length 
 		for (var u=0; u<fp; u++) { 
 			index = cell_per_fp[u]; 
-			// IJ.log("Cell index count =" + index + "Number of filopod attached =" + fp_per_cell[index]);
-			//IJ.log("Filopodia u count =" + u);
 			if (index >= 0 && fp_per_cell[index] >= minfp) { 
 				var scanroi = new Packages.ij.gui.Line(pTips.xpoints[u],pTips.ypoints[u], 
 						pCells.xpoints[index],pCells.ypoints[index]); 
-				//var angle = scanroi.getAngle();
-				//IJ.log("Angle value = "+ angle);
 				scanroi.setStrokeWidth(1); 
 				img2.setRoi(scanroi); 
 	 
 				// Calculate line scan using the masked img2 
-				ScanLine(img2, anadir, linescantag, dx, u);
+				ScanLine(img2, anadir, linescantag, dx, u); 
 	 
 				// Mark with a line on the masked img2 
 				ip2.draw(scanroi); 
 			} 
 		} 
-		for (var i=0; i<nCells; i++) { 
-			var mydata = "";
-			if (fp_per_cell[i] > 0 && fp_per_cell[i] >= minfp) { 
-				for (var j = 0; j< fp; j++) {
-				if (cell_per_fp[j] == i) {
-				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+"\t"+IJ.d2s(Math.sqrt(area_body[i]/Math.PI),2)+newline; 
-			//	tipdata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
-				}
-			}
-			var tipfile = anadir+"sample-angle-result-per-cell-"+i+"-"+anaversion+".txt";
-			saveText(tipfile, mydata, false);  
-		}
-	} 
-	//var Overalltipfile = root+sep+"Overall-angle-result"+"-"+anaversion+".txt"; 
-	// var text = IJ.getLog(); 
-
-	// Save the linescan as text file
-	// saveText(Overalltipfile, tipdata, false); 
-		//sampletab.save(anadir+"sample-results-"+anaversion+"."+resultsformat);
-	//	IJ.log("ncells = " + nCells); 
 		 
 		// Trim the count of cells 
 		for (var z=0;z<nCells;z++) { 
@@ -946,9 +917,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				if (fp_per_cell[u] > 0) { 
 					cell_tipavg[u] /= fp_per_cell[u]; 
 				} 
-				IJ.log("Cell ID = "+IJ.d2s(u,0)+" Number of Tip = " 
-					+ IJ.d2s(fp_per_cell[u],0)+" Mean Cell Intensity = " 
-					+ IJ.d2s(cell_body[u],0)+"Mean Tip Intensity = " 
+				IJ.log("\t"+IJ.d2s(u,0)+"\t" 
+					+ IJ.d2s(fp_per_cell[u],0)+"\t" 
+					+ IJ.d2s(cell_body[u],0)+"\t" 
 					+ IJ.d2s(cell_tipavg[u],0)); 
 					 
 				celltab.setValue("Number of filopodia", u, fp_per_cell[u]); 
@@ -1848,3 +1819,4 @@ function Angle(rad, steps, dx) {
 		return IJ.d2s(this.deg, digits) + " deg.";
 	}
 }
+
