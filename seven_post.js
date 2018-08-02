@@ -101,6 +101,8 @@ for (var u = 0; u < exptlist.length; u++) {
 						celltable = tempfile;
 					} else if (temp == "spacing-results-"+anaversion+".csv") {
 						spacingtable = tempfile;
+					} else if (temp == "filo-spacing-results-"+anaversion+".csv") {
+						filospacingtable = tempfile;
 					} else if (temp == "filopod-results-"+anaversion+".csv") {
 						filotable = tempfile;
 					} else if (temp.substring(versionchar, lastchar) == anaversion+".txt") {
@@ -108,6 +110,8 @@ for (var u = 0; u < exptlist.length; u++) {
 							CopyFile(tempfile, tipexdir, subdir.getName()+"-"+temp);
 						} else if (temp.substring(0,8) == linescantag.substring(0,8)) {
 							CopyFile(tempfile, lengthexdir, subdir.getName()+"-"+temp);
+						} else if (temp.substring(0,7) == "filo-sp") {
+							CopyFile(tempfile, spaceexdir, subdir.getName()+"-"+temp);
 						} else if (temp.substring(0,7) == "spacing") {
 							CopyFile(tempfile, spaceexdir, subdir.getName()+"-"+temp);
 						}

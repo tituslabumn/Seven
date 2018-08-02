@@ -1,0 +1,15 @@
+Complex number test program
+===========================
+Complex number cA = 1.000 + 2.000i
+Complex number cB = 3.000 + 4.000i
+Complex number cC = 4.000 + 6.000i
+Complex number cD = -2.000 + 2.000i
+Complex number cA * cB = -5.000 + 10.000i
+Complex number cA / cB = 0.440 + 0.080i
+Complex	5 * cA = 5.000 + 10.000i
+Complex  cA.Abs() = 2.23606797749979
+Complex  cB.Abs() = 5
+Complex  cA.Arg() = 1.1071487177940904
+Complex  cB.Arg() = 0.9272952180016122
+Complex  cA.RealPow(2) = -3.000 + 4.000i
+Complex  cB.RealPow(2) = -7.000 + 24.000i

@@ -139,6 +139,7 @@ function Complex(real, imag) {
 
 }
 
+function test() {
    // Exercise methods in Complex class ....
 	if (IJ.getLog() != null) { 
 		IJ.selectWindow("Log"); 
@@ -181,4 +182,4 @@ function Complex(real, imag) {
 	// Test complex power function .....
 	IJ.log("Complex  cA.RealPow(2) = " + (a.RealPow(2)) );
 	IJ.log("Complex  cB.RealPow(2) = " + (b.RealPow(2)) );
-
+}

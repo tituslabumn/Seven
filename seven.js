@@ -23,7 +23,7 @@ var WATER_AUTO = -2;
 var LOCAL_AUTO = -1; 
 var GLOBAL_AUTO = 0; 
 var digits = 6; // number of significant digits for logging
-var DEBUG = false; 
+var DEBUG = true; 
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
 var minarea = 40; // minimum area = 1 sq um; prevents errors with very small ROIs 
@@ -45,7 +45,25 @@ var skiptips = false; // skip filopod tip search
 var semi = true; // set to true to wait for manual corrections - recommended with local thresholds 
 var editlinescans = false; // manual editing of manual ROIs after they are loaded 
 var onlyreviewlinescans = false; // manual review of linescans but don't overwrite
- 
+
+importClass(Packages.ij.gui.GenericDialog);
+var options = new GenericDialog("Analysis Options");
+options.addStringField("Raw image file extension", format);
+options.addStringField("Results output file extension", resultsformat);
+options.addCheckbox("Wait for approval of cell mask", semi);
+options.addCheckbox("Wait for approval of line scans", editlinescans);
+options.addCheckbox("Search for filopod tips", !skiptips);
+options.addCheckbox("Search cell perimeter", banded);
+options.showDialog();
+if (! options.wasCanceled()) {
+	format = options.getNextString();
+	resultsformat = options.getNextString();
+	semi = options.getNextBoolean();
+	editlinescans = options.getNextBoolean();
+	skiptips = !options.getNextBoolean();
+	banded = options.getNextBoolean();
+}
+
 // Threshold images to determine cell boundaries 
 // generates two images: the binary mask and the mask applied to the original image 
 function ThresholdCells(anadir, acqname, thresholds, prefix) { 
@@ -120,6 +138,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 						// Process image 
 						var mask = IJ.openImage(imagefile); 
+						var maskp = mask.getProcessor();
 						var img = mask.duplicate(); 
 						// Read the pixel size, converting cm->um 
 					    var cal = mask.getCalibration(); 
@@ -137,6 +156,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 						// Apply threshold to create the mask 
 						switch(th) { 
 							case GLOBAL_AUTO:	// Global threshold (calculated using entire XY image) 
+								//mask.setProcessor(maskp.convertToByte(true));
 								IJ.run(mask, "8-bit", ""); 
 								IJ.setAutoThreshold(mask, "Moments stack"); 
 								IJ.run(mask, "Convert to Mask", "method=Moments background=Light stack"); 
@@ -144,6 +164,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 							case WATER_AUTO: 
 							case LOCAL_AUTO:	// Local threshold (Bernsen algorithm) 
+								//mask.setProcessor(maskp.convertToByte(true));
 								IJ.run(mask, "8-bit", ""); 
 								// Length scale for local thresholds = 2x the mask radius 
 								var bernsen_width_um = 4; 
@@ -162,6 +183,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 								if (th < 0) 
 									IJ.showMessage("Invalid image threshold!"); 
 								IJ.setThreshold(mask, 0, th); 
+								//mask.setProcessor(maskp.convertToByte(true));
 								IJ.run(mask, "8-bit", ""); 
 								IJ.run(mask, "Convert to Mask", "method=Moments background=Light stack"); 
 							} 
@@ -400,8 +422,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	// invert mask 			
 	var ic = new Packages.ij.plugin.ImageCalculator(); 
 	IJ.run(img1, "Subtract...", "value=1 stack"); // subtract 1 from raw image to avoid white pixels 
-	var img2 = ic.run("Max create stack", img1, mask); 
+	var img2 = ic.run("Max create stack", img1, mask); // masked image for filopodia length diagram
+	var img3 = img1.duplicate(); // copy of original image for filopodia spacing diagram
 	var ip2 = img2.getProcessor(); 
+	var ip3 = img3.getProcessor(); 
 	// Save an intermediate image with cells masked in white; this gets used in "linescanonly" mode 
 	saveImage(img2, format, anadir, "Capture-mask-body"+anaversion, 0); 
  
@@ -450,9 +474,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		//Calculate radial distribution 
 		var tipdata = "";
 		var sampletab = new Packages.ij.measure.ResultsTable(); 
-		var mpp = 0.21164;
 		sampletab.setPrecision(digits);
-		img2.setColor(Color.WHITE); 
+		ip2.setColor(maxval); 
 		// Scan in radial pattern (approx 5 um diameter; original radius 12 px at 63X) 
 		var scan_width = 5; 
 		var radius_scan = Math.floor(scan_width/(dx*2)); 
@@ -487,19 +510,27 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			if (tipx[a] >= radius_scan && tipx[a] < (w-radius_scan) && 
 				tipy[a] >= radius_scan && tipy[a] < (h-radius_scan)) {
 				img2.setRoi(new Packages.ij.gui.Line( 
-					tipx[a], tipy[a], (tipx[a]+radius_scan).intValue(), tipy[a])); 
+					tipx[a], tipy[a], parseInt(tipx[a]+radius_scan), tipy[a])); 
 	 
 				var thetastep = 3; 
 				var nSteps = Math.ceil(360/thetastep); 
 				img2.hide(); 
 				IJ.run(img2, "Set Scale...", "distance=1 known="+pixelsize+" pixel=1 unit=um"); 
-				IJ.run(img2, "Radial Reslice", "angle=360 degrees_per_slice="+ 
-					IJ.d2s(thetastep, 0)+" direction=Clockwise"); 
-				var radial_3d = IJ.getImage(); 
-				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, (radius_scan-1).intValue(), 0)); 
-				IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid"); 
-				var radial_2d = IJ.getImage(); 
-				IJ.run(radial_2d, "Rotate 90 Degrees Right", ""); 
+				//IJ.run(img2, "Radial Reslice", "angle=360 degrees_per_slice="+ 
+				//	IJ.d2s(thetastep, 0)+" direction=Clockwise"); 
+				//var radial_3d = IJ.getImage(); 
+
+				var radslicer = new Packages.fiji.stacks.Radial_Reslice();
+				radslicer.setup("angle=360 degrees_per_slice="+
+					IJ.d2s(thetastep, 0)+" direction=Clockwise", img2);
+				var radial_3d = radslicer.radreslice(img2);
+				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, parseInt(radius_scan-1), 0)); 
+				var slicer = new Packages.ij.plugin.Slicer();
+				var radial_2d = slicer.reslice(radial_3d);
+				//IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid"); 
+				//var radial_2d = IJ.getImage(); 
+				//IJ.run(radial_2d, "Rotate 90 Degrees Right", ""); 
+				radial_2d.setProcessor(radial_2d.getProcessor().rotateRight());
 				radial_2d.setRoi(new Rectangle(0, 0, nSteps, (radius_scan-1))); 
 				var radial_dist = new Array(nSteps); 
 	 
@@ -539,8 +570,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		var regfp = fp; 
 		var cells_with_fp = nCells; 
 	 
-	    // need to set line color here for contrast with white mask 
-		img2.setColor(Color.GRAY); 
+	    // Set line color on the masked img2 to gray for contrast with white mask 
+		ip2.setColor(Color.GRAY); 
+		// Set line color on the unmasked img3 to white
+		ip3.setColor(maxval); 
 	 
 		for (var u=0; u<fp; u++) { 
 			var score = 1e6; 
@@ -557,6 +590,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			} 
 			if (reg >= 0) { 
 				// Select the line connecting tip to cell center-of-area 
+				// Is this step necessary???
 				img2.setRoi( 
 					new Packages.ij.gui.Line(pTips.xpoints[u],pTips.ypoints[u], 
 						pCells.xpoints[reg],pCells.ypoints[reg]) 
@@ -586,21 +620,29 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				//IJ.log("Angle value = "+ angle);
 				scanroi.setStrokeWidth(1); 
 				img2.setRoi(scanroi); 
+				img3.setRoi(scanroi); 
 	 
 				// Calculate line scan using the masked img2 
 				ScanLine(img2, anadir, linescantag, dx, u);
 	 
-				// Mark with a line on the masked img2 
+				// Mark with a line on the masked img2 & unmasked img3
 				ip2.draw(scanroi); 
+				ip3.draw(scanroi);
 			} 
 		} 
+
+		if (DEBUG) { saveImage(img3, format, anadir, "img3-"+anaversion, 0); }
+
 		for (var i=0; i<nCells; i++) { 
 			var mydata = "";
 			if (fp_per_cell[i] > 0 && fp_per_cell[i] >= minfp) { 
 				for (var j = 0; j< fp; j++) {
 				if (cell_per_fp[j] == i) {
-				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+"\t"+IJ.d2s(Math.sqrt(area_body[i]/Math.PI),2)+newline; 
-			//	tipdata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
+				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+
+					"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+
+					"\t"+IJ.d2s(Math.sqrt(area_body[i]/Math.PI),2)+newline; 
+				//	tipdata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+
+				//		"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
 				}
 			}
 			var tipfile = anadir+"sample-angle-result-per-cell-"+i+"-"+anaversion+".txt";
@@ -632,6 +674,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		celltab.setPrecision(digits); 
 	    var spacingtab = new Packages.ij.measure.ResultsTable(); 
 		spacingtab.setPrecision(digits); 
+	    var filospacingtab = new Packages.ij.measure.ResultsTable(); 
+		filospacingtab.setPrecision(digits); 
 		 
 	    // Spacing analysis of cell perimeter band 
 	    var rs = new RoiSet(); 
@@ -647,8 +691,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				celltab.incrementCounter(); 
 				celltab.addValue("Cell Intensity", cell_body[i]); 
 				celltab.addValue("Cell Area (um^2)", area_body[i]); 
-			    //if (fp_per_cell[i] > 0) { // optionally only look at cells with fp 
-				spacingtab.incrementCounter(); 
 				 
 				// analyze cells by ROI 
 				img1.setRoi(rois[i]); 
@@ -657,93 +699,161 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				if (area_body[i] > minarea) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
-					var rawpoints = img1.getRoi(); 
+					var rawpoints = new Packages.ij.gui.PolygonRoi(
+						img1.getRoi().getInterpolatedPolygon(1, true), 
+						Packages.ij.gui.Roi.FREELINE); 
 					var outline = new Polygon(); 
-					for (var j = 0; j<rawpoints.getPolygon().xpoints.length; j++) { 
-						outline.addPoint(rawpoints.getPolygon().xpoints[j],  
-							rawpoints.getPolygon().ypoints[j]); 
-					} 
-					// Correct "C" to "O" shape 
-					outline.addPoint(rawpoints.getPolygon().xpoints[0],  
-						rawpoints.getPolygon().ypoints[0]); 
-					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
-						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
-						rawpoints.getPolygon().ypoints[0]+1); 
-					img2.setRoi(startroi); 
-					// Mark with a line on the masked img2 
-					ip2.draw(startroi); 
-						
+					
+					var nPts = rawpoints.getFloatPolygon().xpoints.length;
+					// Correct "C" to "O" shape - first point
+					outline.addPoint(rawpoints.getFloatPolygon().xpoints[nPts-1],  
+						rawpoints.getFloatPolygon().ypoints[nPts-1]); 
+					for (var j = 0; j<nPts; j++)
+						outline.addPoint(rawpoints.getFloatPolygon().xpoints[j],  
+							rawpoints.getFloatPolygon().ypoints[j]); 
+					// Correct "C" to "O" shape - last point
+					outline.addPoint(rawpoints.getFloatPolygon().xpoints[0],  
+						rawpoints.getFloatPolygon().ypoints[0]); 
+
+					// Add ROI to image
 					var linepoints = new Packages.ij.gui.PolygonRoi(outline,  
 						Packages.ij.gui.Roi.FREELINE); 
+					linepoints.fitSplineForStraightening();
 					img1.setRoi(linepoints); 
-					 
+					// Add ROI to image -- strange side effects -- ROI needs to be re-created
+					linepoints = new Packages.ij.gui.PolygonRoi(outline,  
+						Packages.ij.gui.Roi.FREELINE); 
+					linepoints.fitSplineForStraightening();
+					img3.setRoi(linepoints); 
+
+					// mark the position where the perimeter band starts (x=0)
+					var startroi = new Packages.ij.gui.Arrow(rawpoints.getFloatPolygon().xpoints[0],  
+						rawpoints.getFloatPolygon().ypoints[0],rawpoints.getFloatPolygon().xpoints[0]+1,  
+						rawpoints.getFloatPolygon().ypoints[0]+1); 
+					img2.setRoi(startroi); 
+					// Mark with an arrow on the masked img2 
+					ip2.draw(startroi); 
+					
 					// Generate banded image from original 
-					IJ.run(img1, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
-					band = IJ.getImage(); 
-	 
-					// Find maxima 
-					var bandnoise = noise; // defined above based on whole image 
-					IJ.run(band, "Find Maxima...", 
-						"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
-					var bandpoints = band.getRoi(); 
-					if (bandpoints != null && bandpoints.getPolygon() != null) { 
-		 
-						var bandx = bandpoints.getPolygon().xpoints; 
-						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
-						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, band.width, dx);	 
-						var neighbormeanx = 0; 
-						for (var j = 0;j<neighborx.length; j++) { 
-							neighbormeanx += neighborx[j]; 
-						} 
-						neighbormeanx /= neighborx.length; 
-						var cellperimeter = band.width*dx; 
-						var meanx = cellperimeter/bandx.length; 
-						// Cui .. Rice, J Chem Phys, 2002 
-						// expected probability density = 2n exp(-n * 2R) where n is number density 
-						// mean = integrated density = integral of -exp(-2nR) 0->inf = 1/2n 
-						var expected = meanx/2; 
-						 
-						// generate exponential random data 
-						var simpoints = 1000; 
-						var expdata = new Array(simpoints); 
-						var sumdata = 0; 
-						for (var j = 0; j<simpoints; j++) { 
-							var expvar = 0; 
-							// y = -exp(-2/meanx*R)  
-							// ln (-y) = 2/meanx*R --> R = meanx/2*ln (-y) 
-							// let y = [-1, 0]; -y = [0, 1] = random variable 
-							do { 
-								expvar = Math.random(); 
-								expdata[j] = -expected*Math.log(expvar); 
+					// use white color to draw line ROIs on img3 - analyze img3 here - find the middle row
+					// list the white pixels in middle row - copy the pixel values from img1 in the same column
+					var strt = new Packages.ij.plugin.Straightener();
+					var band = strt.straightenLine(img1, boxheight);
+					//IJ.run(img1, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
+					//var band = IJ.getImage(); 
+					var band_with_fp = band.duplicate(); 
+					// convert to 16-bit without rescaling the LUT
+					band_with_fp = band_with_fp.convertToShort(false); 
+					band_with_fp.setLineWidth(1);
+					band_with_fp.setColor(Math.pow(2, 16)-1);
+					var band_w = band_with_fp.getWidth(); 
+					var midheight = Math.floor(boxheight/2);
+					
+					// Find intersection points by searching filopodia list
+					for (var u=0; u<fp; u++) { 
+						if (cell_per_fp[u] == i) { 
+							var nSteps = -1;
+							var xcrossing = 0;
+							var ycrossing = 0;
+							var pathlength = 0;
+							var longerdist = 50000;
+							var shorterdist = 20;
+							
+							// check for intersection with cell perimeter
+							var fp_slope = getSlope(pTips.xpoints[u], pTips.ypoints[u],
+								pCells.xpoints[index], pCells.ypoints[index]);
+							var fp_inter = getIntercept(pTips.xpoints[u], pTips.ypoints[u],
+								pCells.xpoints[index], pCells.ypoints[index]);
+							
+							for (var j = 0; j<(outline.xpoints.length-1); j++) {
+								var lineseg_slope = getSlope(outline.xpoints[j],
+									outline.ypoints[j], 
+									outline.xpoints[j+1],
+									outline.ypoints[j+1]);
+								var lineseg_inter = getIntercept(outline.xpoints[j],
+									outline.ypoints[j], 
+									outline.xpoints[j+1],
+									outline.ypoints[j+1]);
+								var xtemp = getCrossing(fp_slope, fp_inter, lineseg_slope, lineseg_inter);
+								var ytemp = lineseg_slope * xtemp + lineseg_inter;
+								var dtemp1 = distance(xtemp, ytemp, pTips.xpoints[u], pTips.ypoints[u]) + 
+											distance(xtemp, ytemp, pCells.xpoints[index], pCells.ypoints[index]);
+								var dtemp2 = distance(xtemp, ytemp, outline.xpoints[j], outline.ypoints[j]) +
+											 distance(xtemp, ytemp, outline.xpoints[j+1], outline.ypoints[j+1]);
+								//if (dtemp < cartesian) {
+								//	cartesian = dtemp;
+								//	nSteps = j;
+								//	xcrossing = xtemp;
+								//	ycrossing = ytemp;
+								//}
+								//if (((xtemp >= outline.xpoints[j]-5 && xtemp <= outline.xpoints[j+1]+5) ||
+								//	 (xtemp <= outline.xpoints[j]+5 && xtemp >= outline.xpoints[j+1]-5)) &&
+								//	((ytemp >= outline.ypoints[j]-5 && ytemp <= outline.ypoints[j+1]+5) ||
+								//	 (ytemp <= outline.ypoints[j]+5 && ytemp >= outline.ypoints[j+1]-5)) 
+								if ((dtemp2 < shorterdist) && (dtemp1 < longerdist) 
+									&& !((isNaN(xtemp) || isNaN(xtemp-xtemp)) ||
+									 	 (isNaN(ytemp) || isNaN(ytemp-ytemp)))) {
+										longerdist = dtemp1;
+										//shorterdist = dtemp2;
+										nSteps = j;
+										xcrossing = xtemp;
+										ycrossing = ytemp;
+										//IJ.showMessage(IJ.d2s(pTips.xpoints[u])+" "+IJ.d2s(pTips.ypoints[u])+
+										//	"; "+IJ.d2s(outline.xpoints[j])+" "+IJ.d2s(outline.ypoints[j]));
+									}
 							} 
-							while (expdata[j] > cellperimeter/2); // enforce circularity 
-							sumdata += expdata[j]; 
+
+							if (nSteps == 0) {
+								pathlength = band_w;
+							} else if (nSteps > 0) { 
+								var path_to_x = new Polygon(); 
+								for (var j = 0; j<nSteps+1; j++)
+									path_to_x.addPoint(outline.xpoints[j], outline.ypoints[j]); 
+								// Add intersection as last point 
+								path_to_x.addPoint(xcrossing, ycrossing);
+			
+								// Add ROI to image
+								var points_to_x = new Packages.ij.gui.PolygonRoi(path_to_x,  
+									Packages.ij.gui.Roi.FREELINE);
+								points_to_x.fitSplineForStraightening();
+								img3.setRoi(points_to_x); 
+								//IJ.run(img3, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
+								//var band_with_xcrossing = IJ.getImage(); 
+								var band_with_xcrossing = strt.straightenLine(img3, boxheight);
+								pathlength = band_with_xcrossing.getWidth(); 
+								IJ.showMessage("nSteps = "+IJ.d2s(j,0)+"; xc = "+IJ.d2s(xcrossing,3)
+									+"; yc = "+IJ.d2s(ycrossing,3)+"; pathlength = "+IJ.d2s(pathlength*dx,0));
+							} else {
+								IJ.showMessage("Isn't it strange? x = "+IJ.d2s(pTips.xpoints[u], 0)+
+									"; y = "+IJ.d2s(pTips.ypoints[u],0));
+							}
+
+							if (pathlength > 0)
+								band_with_fp.drawDot(pathlength, midheight);
 						} 
-						// can calculate expected value from simulation -  
-						// however this is not reliable at low density (n < 5 or so) 
-						var simexpected = sumdata / simpoints; 
-						var skew_neighbor = skewness(neighborx); 
-						var skew_sim = skewness(expdata); 
+					}
+					
+					//var spacing_threshold = Math.floor(0.98 * maxval); // tolerate error from straighten operation
+					// mark the intersection at the midheight using a single maximum intensity pixel
+					//for (var j=0; j<band_w; j++)
+					//	if (getValue(band_with_x, j, midheight) >= spacing_threshold)
+					//		band_with_fp_proc.drawDot(j, midheight); 	
 	 
-						// Reporting 
-						spacingtab.addValue("Number of Particles", bandx.length); 
-						spacingtab.addValue("Band perimeter (um)", cellperimeter); 
-						spacingtab.addValue("Particle spacing - raw (um)", meanx); 
-						spacingtab.addValue("Neighbor spacing (um)", neighbormeanx); 
-						spacingtab.addValue("Neighbor skewness", skew_neighbor); 
-						spacingtab.addValue("Neighbor - expected (um)", IJ.d2s(simexpected,digits)); 
-						spacingtab.addValue("Neighbor - expected skewness", skew_sim);  
-					} 
+					// Find maxima in banded image
+					//     original analysis - points of max intensity in band
+					//     AnalyzeBandMaxima(band, noise, dx, spacingtab); 
+					var band_with_fp_img = new Packages.ij.ImagePlus("", band_with_fp);
+					AnalyzeBandMaxima(band_with_fp_img, 0.8*Math.pow(2,16), dx, filospacingtab); // new analysis - filopodia intersection points
 					
 					// Analyze banded image intensity 
-					IJ.run(band, "Select All", ""); 
-					var bs = band.getStatistics(MEASUREMENTS); 
+					var band_img = new Packages.ij.ImagePlus("", band);
+					IJ.run(band_img, "Select All", ""); 
+					var bs = band_img.getStatistics(MEASUREMENTS); 
 					area_band[i] = bs.area; 
 					//cell_band[i] = bs.mean-bgval; // calculated below from peak cortex intensity
 					ScanLine(img1, anadir, "spacing", dx, i); 
 
-					var bandprofile = new Packages.ij.gui.ProfilePlot(band);
+					var bandprofile = new Packages.ij.gui.ProfilePlot(band_img);
 					var borderpixels = bandprofile.getProfile(); 
 									
 					var denom = 0;
@@ -752,9 +862,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var n = borderpixels.length;
 					
 					// background subtraction
-					for (var j = 0; j<n; j++) {
+					for (var j = 0; j<n; j++)
 						borderpixels[j] -= bgval;
-					}
 					
 					// smoothing
 					var USESMOOTH = false;	
@@ -762,9 +871,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var smoothwidth = Math.ceil(smoothwidth_um/dx); // width in pixels
 					smoothedpixels = smooth(borderpixels, smoothwidth);
 					
-					if (USESMOOTH) {
+					if (USESMOOTH)
 						borderpixels = smoothedpixels;
-					}
 
 					// get min and max of pixel intensities
 					var minval = Math.pow(2,16)-1;
@@ -783,9 +891,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					cell_band[i] = maxval;
 
 					// rescale intensity values to conservatively estimate sample size
-					var gfpval = 200; // ??? need to determine 
+					var gfpval = 200; // ??? need a better estimate 
 					var kappa = 4; // width parameter of von Mises distribution = 1/dispersion
-					var bessel = 11.30192; // besseli(4,0) - 95% density from -1.08 to +1.08 rad = 124 deg
+					var bessel = 11.30192195213633; // besseli(4,0) - 95% density from -1.08 to +1.08 rad = 124 deg
 					var radstep = 2*Math.PI/n;
 					for (var j = 0; j<n; j++) {
 						var cj = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
@@ -844,17 +952,17 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					}
 					pewseyskew /= denom;
 					
-					// Cicular skewness - see Statistical analysis of circular data, Fisher, p. 34
+					// Cicular skewness - see p. 34, Statistical analysis of circular data, Fisher (1995) {Google-Books-ID: wGPj3EoFdJwC}
 					var mxskew = mx2.real * Math.sin(ComplexDist(mx2.imag, 2*mx1.Arg())) 
 						/ Math.pow((1 - mx1.Abs()), 1.5);						
 
-					// Rayleigh test, Zar 2010 eq. 27.4
+					// Rayleigh test, eq. 27.4 in Zar's Biostatistical Analysis, 5e. (2010) {Google-Books-ID: LCRFAQAAIAAJ}
 					//var radicand = 1 + 4*(denom + Math.pow(denom,2) - Math.pow(mx1.Abs(),2));
 					//var rayleighprob = 1;
 					//if (radicand >= 0)
 					//	rayleighprob = Math.exp(Math.sqrt(radicand)	- (1 + 2*denom));
 
-					// Hodges-Ajne test, Zar 2010, eq. 27.8
+					// Hodges-Ajne test, eq. 27.8 in Zar (2010)
 					var m = n;
 					for (var j = 0; j<n; j++) {
 						var halfcircle = Math.ceil(n/2);
@@ -898,9 +1006,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					celltab.addValue("Band Kurtosis", bs.kurtosis);
 					 
 					// clean up 
-					saveImage(band, format, anadir, "spacing-"+i, anaversion); 
-					band.changes = false; 
-					if (!DEBUG) { band.close(); } 
+					saveImage(band_img, format, anadir, "spacing-"+i, anaversion); 
+					saveImage(band_with_fp_img, format, anadir, "filo-spacing-"+i, anaversion); 
+					
+					band_img.changes = false; 
+					band_with_fp_img.changes = false; 
+					if (!DEBUG) { 
+						band.close();
+						band_with_fp.close();
+					} 
 				} 
 			} 
 			//standardize(cell_band, cell_body, area_band, area_body);  
@@ -1004,11 +1118,16 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		saveText(textfile, text, false); 
  
 		// Save the results table as a delimited text file 
-		spacingtab.save(anadir+"spacing-results-"+anaversion+"."+resultsformat); 
+		//spacingtab.save(anadir+"spacing-results-"+anaversion+"."+resultsformat); 
+		filospacingtab.save(anadir+"filo-spacing-results-"+anaversion+"."+resultsformat); 				 
 		 
 		// Clean up from second pass 
 		img2.changes = false; 
-		if (!DEBUG) { img2.close(); } 
+		img3.changes = false; 
+		if (!DEBUG) { 
+			img2.close();
+			img3.close();
+		} 
  
 		// Clean up stray images - copies of img1 that don't close due to an unidentified issue
 		var strayimg = WindowManager.getCurrentImage(); 
@@ -1292,7 +1411,9 @@ function setMask(img, depth, invert) {
  
 	// Scale 8-bit mask up to 16-bit 
 	if (img.getType() == ImagePlus.GRAY8) { 
-	    IJ.run(img, "16-bit", ""); 
+	    IJ.run(img, "16-bit", "");
+	    
+	    //img.setProcessor(img.getProcessor().convertToShort(true)); 
 	    IJ.run(img, "Multiply...", "value=1000 stack"); 
 	} 
 	 
@@ -1333,9 +1454,9 @@ function saveImage(img, format, dir, name, n) {
 		s = IJ.d2s(Math.abs(n), 0); 
 	var path = dir+sep+name+"-"+s+"."+format; 
  
-	if (DEBUG) { IJ.showMessage(img.getTitle()); } 
+	//if (DEBUG) { IJ.showMessage(img.getTitle()); } 
 	saveIf(img, format, path); 
-	img.show(); 
+	if (DEBUG) img.show(); 
 } 
  
 function getFileList(dir) { 
@@ -1417,15 +1538,13 @@ function noiseThreshold(stats, minSNR) {
 } 
  
 function neighbor(vararray, maxdist, dx) { 
-	// copy java array to jsarray 
-	var jsarray = new Array(vararray.length); 
-	for (var i = 0; i<jsarray.length; i++) { 
-		jsarray[i] = vararray[i]; 
-	} 
- 
-	// sort array 
+	// copy java array to javascript Array 
+	Packages.java.util.Arrays.sort(vararray);
 	var sorted = new Array(vararray.length); 
-	sorted = jsarray.slice(); 
+	for (var i = 0; i<sorted.length; i++)
+		sorted[i] = vararray[i]; 
+
+ 	// make shifted copies to simulate a circular array
 	var left = sorted.slice(); 
 	var right = sorted.slice();  
 	var first = left.shift(); 
@@ -1446,14 +1565,14 @@ function neighbor(vararray, maxdist, dx) {
 		dleft = (left[i] - sorted[i] + circ) * dx; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
 		dright = (sorted[i] - right[i] + circ) * dx; 
-		jsarray[i] = (dleft < dright) ? dleft : dright; 
+		sorted[i] = (dleft < dright) ? dleft : dright; 
  
 		// enforce distance > 0 
-		if (jsarray[i] < 0) { 
+		if (sorted[i] < 0) { 
 			IJ.showMessage("Neighbor distance failed, must be positive"); 
 		} 
 	} 
-	return jsarray; 
+	return sorted; 
 } 
  
 function skewness(vararray) { 
@@ -1516,21 +1635,29 @@ function kymograph(img0, rs, dt, boxwidth_um, paramtab, resultsdir) {
  
 			// Rotate the image 
 			img.show(); 
-			IJ.run(img, "Rotate... ", 
-				"interpolation=Bicubic stack angle="+ 
-				IJ.d2s(theta_deg, digits));			// Rotate image 
+			var rotator = new Packages.ij.plugin.Rotator();
+			rotator.setup("interpolation=Bicubic stack angle="+IJ.d2s(theta_deg, digits), img);
+			rotator.run(img.getProcessor());			
+			//IJ.run(img, "Rotate... ", 
+			//	"interpolation=Bicubic stack angle="+ 
+			//	IJ.d2s(theta_deg, digits));			// Rotate image 
  
 			// Draw bounding rectangle for 3D-kymograph in the rotated image stack 
 			getRectangle(img, line, hw/2, hh/2, woffset, hoffset, boxheight, theta_deg); 
  
 			// Reslice image to generate 3D-kymograph, project into 2D-kymograph 
-			IJ.run(img, "Reslice [/]...", "output=1.000 slice_count=1 avoid"); // Make kymograph 
-			var reslice = IJ.getImage(); 
+			var slicer = new Packages.ij.plugin.Slicer();
+			var reslice = slicer.reslice(img);
+			//IJ.run(img, "Reslice [/]...", "output=1.000 slice_count=1 avoid"); // Make kymograph 
+			//var reslice = IJ.getImage(); 
  
 			// Project max intensity kymograph across the boxheight direction 
-			IJ.run(reslice, "Z Project...", "projection=[Max Intensity]"); 
-			var kymograph = IJ.getImage(); 
-			IJ.run(kymograph, "Rotate 90 Degrees Left", ""); 
+			var projector = new Packages.ij.plugin.ZProjector();
+			var kymograph = projector.run(reslice, "max");
+			kymograph.setProcessor(kymograph.getProcessor().rotateLeft());
+			//IJ.run(reslice, "Z Project...", "projection=[Max Intensity]"); 
+			//var kymograph = IJ.getImage(); 
+			//IJ.run(kymograph, "Rotate 90 Degrees Left", ""); 
 			saveImage(kymograph, format, resultsdir, outname, j); 
 			var kymograph2 = kymograph.duplicate(); 
  
@@ -1621,7 +1748,7 @@ function processKymograph(img) {
 	imp.findEdges(); 
 	img.setProcessor(imp); 
 	IJ.run(img, "Enhance Contrast", "saturated=0.35"); 
-	IJ.run(img, "8-bit", ""); 
+	img.setProcessor(imp.convertToByte(true));
 	IJ.setAutoThreshold(img, "Moments stack"); 
 	IJ.run(img, "Convert to Mask", "method=Moments background=Light stack"); 
 } 
@@ -1739,7 +1866,62 @@ function fitKymograph(x, y, minsize, minslope, minrsq) {
 	result.push(maxsize); // result[5], length of segment in pixels 
 	return result; 
 } 
- 
+
+function AnalyzeBandMaxima(band, bandnoise, dx, spacingtab) {		
+	spacingtab.incrementCounter(); 
+	IJ.run(band, "Find Maxima...", 
+		"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
+	var bandpoints = band.getRoi(); 
+	if (bandpoints != null && bandpoints.getPolygon() != null) { 
+
+		var bandx = bandpoints.getPolygon().xpoints; 
+		// ignore the width of the band when checking the spacing between points (1-D search)
+		var skewx = skewness(bandx); 
+		var neighborx = neighbor(bandx, band.width, dx);	 
+		var neighbormeanx = 0; 
+		for (var j = 0;j<neighborx.length; j++)
+			neighbormeanx += neighborx[j]; 
+		neighbormeanx /= neighborx.length; 
+		
+		var cellperimeter = band.width*dx; 
+		var meanx = cellperimeter/bandx.length; 
+
+		// generate exponential random data using nearest neighbor distribution:
+		//     Cui .. Rice, J Chem Phys, 2002 https://aip.scitation.org/doi/10.1063/1.1435568
+		//     expected probability density = 2n exp(-n * 2R) where n is number density 
+		//     mean = integrated density = integral of -exp(-2nR) 0->inf = 1/2n 
+		var simpoints = 1000; 
+		var expdata = new Array(simpoints); 
+		var expdata_sum = 0; 
+		for (var j = 0; j<simpoints; j++) { 
+			var expvar = 0; 
+			// y = -exp(-2/meanx*R)  
+			// ln (-y) = 2/meanx*R --> R = meanx/2*ln (-y) 
+			// let y = [-1, 0]; -y = [0, 1] = random variable 
+			do { 
+				expvar = Math.random(); 
+				expdata[j] = -meanx/2*Math.log(expvar); 
+			} 
+			while (expdata[j] > cellperimeter/2); // enforce circularity 
+			expdata_sum += expdata[j]; 
+		} 
+		// can calculate expected value from simulation -  
+		// however this is not reliable at low density (n < 5 or so) 
+		var skew_neighbor = skewness(neighborx); 
+		var neighbormeanx_sim = expdata_sum / simpoints; 
+		var skew_sim = skewness(expdata); 
+
+		// Reporting 
+		spacingtab.addValue("Number of Particles", bandx.length); 
+		spacingtab.addValue("Band perimeter (um)", cellperimeter); 
+		spacingtab.addValue("Particle spacing - raw (um)", meanx); 
+		spacingtab.addValue("Neighbor spacing (um)", neighbormeanx); 
+		spacingtab.addValue("Neighbor skewness", skew_neighbor); 
+		spacingtab.addValue("Neighbor spacing - random expectation (um)", neighbormeanx_sim);
+		spacingtab.addValue("Neighbor skewness - random expectation", skew_sim);  
+	} 
+}
+
 function resize(img, hw, hh, woffset, hoffset) { 
 	var resizer = new Packages.ij.plugin.CanvasResizer(); 
 	var ims = img.getStack(); 
@@ -1771,7 +1953,7 @@ function LoadRois(rs, roifile, prompt) {
 function drawRoi(img, roi) { 
 	IJ.run(img, "Enhance Contrast", "saturated=0.35"); 
 	IJ.run(img, "RGB Color", ""); 
-	img.setColor(Packages.java.awt.Color.YELLOW); 
+	img.setColor(Color.YELLOW); 
 	var ip = img.getProcessor(); 
 	ip.draw(roi); 
 	img.setProcessor(ip); 
@@ -1847,4 +2029,31 @@ function Angle(rad, steps, dx) {
 	this.toString = function() {
 		return IJ.d2s(this.deg, digits) + " deg.";
 	}
+}
+
+function getSlope(x1, y1, x2, y2) {
+	var slope = (x2-x1);
+	if (slope != 0)
+		slope = (y2-y1)/slope;
+	else 
+		slope = Infinity;
+	return slope;
+}
+
+function getIntercept(x1, y1, x2, y2) {
+	return y1 - getSlope(x1, y1, x2, y2) * x1;
+}
+
+function getCrossing(x1, y1, x2, y2) { 
+	var cross = (x1-x2); // note similarity to getSlope except terms are swapped
+	if (cross != 0)
+		cross = (y2-y1)/cross;
+	else 
+		cross = Infinity;
+	return cross;
+}
+
+function distance(x1, y1, x2, y2) { 
+	var dist = Math.sqrt(Math.pow((x2-x1),2)+Math.pow((y2-y1),2));
+	return dist;
 }
