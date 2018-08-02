@@ -25,7 +25,7 @@ var GLOBAL_AUTO = 0;
 var digits = 6; // number of significant digits for logging
 var DEBUG = false; 
 var dt = 0.793; // default timestep in seconds if not available from logfile
-var boxwidth_um = 0.8; // height in microns of linescan 
+var boxheight_um = 0.8; // height in microns of linescan 
 var minarea = 40; // minimum area = 1 sq um; prevents errors with very small ROIs 
 var MEASUREMENTS = Measurements.AREA + Measurements.MEAN + 
 	Measurements.MEDIAN + Measurements.MIN_MAX + Measurements.MODE + 
@@ -310,7 +310,7 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) {
 }
  
 // Analysis of filopod line scans 
-function AnalyzeScans(img1, imagefile, anadir, boxwidth_um) { 
+function AnalyzeScans(img1, imagefile, anadir, boxheight_um) { 
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
 	// set image scale cm->um 
@@ -350,7 +350,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxwidth_um) {
 		cm2um(cal); 
 	    var dx = cal.getX(1); 
 	
-		kymograph(img1, rs, timestep, boxwidth_um, paramtab, kymodir); 
+		kymograph(img1, rs, timestep, boxheight_um, paramtab, kymodir); 
 	     
 	    // Measure intensity in the masked image 
 	    var masked = new File(anadir+sep+"Capture-mask-body"+anaversion+"-0."+format); 
@@ -377,7 +377,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxwidth_um) {
 } 
 
 // Analysis for counting filopodia tips and registering to cells 
-function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) { 
+function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass) { 
 	// get raw image stats
 	
 	var stats = img1.getStatistics(MEASUREMENTS); 
@@ -389,7 +389,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
     var cal = img1.getCalibration(); 
  	cm2um(cal); 
     var dx = cal.getX(1); 
-	var boxheight = Math.ceil(boxwidth_um/dx); // height in pixels of linescan 
+	var boxheight = Math.ceil(boxheight_um/dx); // height in pixels of linescan 
     var pixelsize = IJ.d2s(dx, digits); 
  
 	//Open mask file 
@@ -415,9 +415,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
  
 	// Clean up from masking 
 	if (!DEBUG) { mask.close(); } 
- 
+
+ 	// detect tips
 	IJ.run(img2, "Find Maxima...", 
 		"noise="+IJ.d2s(noise,0)+" output=[Point Selection]"); 
+		
 	var rRaw = img2.getRoi(); 
 	var rs = new RoiSet(); 
 	StoreRoi(img2, rRaw, "Raw", rs); 
@@ -871,8 +873,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				 
 					// Find maxima in banded image
 					//     original analysis - points of max intensity in band
-					var band_img = new Packages.ij.ImagePlus("", band);
-					//AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i, anadir); 
+					var band_img = new Packages.ij.ImagePlus("band intensity", band);
+					if (DEBUG) { band_img.show(); }
+					AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i, anadir); 
 					
 					//		filo analysis - points of intersection with band
 					var band_with_fp_img = new Packages.ij.ImagePlus("", band_with_fp);
@@ -1156,10 +1159,13 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		saveText(textfile, text, false); 
  
 		// Save the results table as a delimited text file 
-		//spacingtab.save(anadir+"spacing-results-"+anaversion+"."+resultsformat); 
-		filospacingtab.save(anadir+"filo-spacing-results-"+anaversion+"."+resultsformat); 				 
-		 
+		if (banded) {
+			spacingtab.save(anadir+"spacing-results-"+anaversion+"."+resultsformat); 
+			filospacingtab.save(anadir+"filo-spacing-results-"+anaversion+"."+resultsformat); 				 
+		}
+				 
 		// Clean up from second pass 
+		rs.close();
 		img2.changes = false; 
 		img3.changes = false; 
 		if (!DEBUG) { 
@@ -1249,7 +1255,7 @@ function seven_scans(imagefile, anadir) {
 	ClearLog(); 
  	var img = IJ.openImage(img); 
  
-	AnalyzeScans(img, imagefile, anadir, boxwidth_um); 
+	AnalyzeScans(img, imagefile, anadir, boxheight_um); 
 } 
  
 function seven_run(imagefile, anadir, imagetab) { 
@@ -1262,15 +1268,15 @@ function seven_run(imagefile, anadir, imagetab) {
 		var img0 = IJ.openImage(imagefile); 
 	 
 		// Analyze tips (first pass) 
-		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
+		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxheight_um, true); 
 	 
 		// analyze cell body intensity 
 		//IJ.freeMemory();
 		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, area_body); 
-		AnalyzeScans(img0.duplicate(), imagefile, anadir, boxwidth_um); 
+		AnalyzeScans(img0.duplicate(), imagefile, anadir, boxheight_um); 
 	 
 		// Analyze tips (second pass) 
-		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, false); 
+		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxheight_um, false); 
 			 
 		// Clean up 
 		//IJ.freeMemory();
@@ -1666,12 +1672,12 @@ function skewness(vararray) {
 	return skew; 
 } 
  
-function kymograph(img0, rs, dt, boxwidth_um, paramtab, resultsdir) { 
+function kymograph(img0, rs, dt, boxheight_um, paramtab, resultsdir) { 
 	var rois = rs.getRoisAsArray(); 
 	var cal = img0.getCalibration(); 
 	cm2um(cal); // set micrometer scale 
 	var dx = cal.getX(1); 
-	var boxheight = Math.ceil(boxwidth_um/dx); // height in pixels of linescan 
+	var boxheight = Math.ceil(boxheight_um/dx); // height in pixels of linescan 
  
 	// set dimensions for the resized image 
 	var hw = parseInt(Math.floor(1.5*img0.getWidth())); 
@@ -1934,10 +1940,12 @@ function fitKymograph(x, y, minsize, minslope, minrsq) {
 
 function AnalyzeBandMaxima(band, bandnoise, dx, spacingtab, index, anadir) {		
 	IJ.run(band, "Select None", "");
+	
+	// note that for thicker bands it is desirable to add the exclude keyword, i.e.,
+	// "... output=[Point Selection] exclude" -- but it excludes everything in thin bands.
 	IJ.run(band, "Find Maxima...", 
-		"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
-	var band_polygonroi = band.getRoi();
-	AnalyzeSpacing(band, band_polygonroi, dx, spacingtab, index, anadir);
+		"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection]"); 
+	AnalyzeSpacing(band, band.getRoi(), dx, spacingtab, index, anadir);
 }
 
 function AnalyzeSpacing(band, bandpoints, dx, spacingtab, index, anadir) {
@@ -1993,7 +2001,7 @@ function AnalyzeSpacing(band, bandpoints, dx, spacingtab, index, anadir) {
 
 		saveArray(neighborx, anadir, "filo-spacing", 1, index);
 	} else {
-		IJ.error("ROI for spacing analysis is empty");
+		if (DEBUG) { IJ.showMessage("ROI for spacing analysis is empty"); }
 	}
 }
 
