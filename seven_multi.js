@@ -13,6 +13,7 @@ var root = new File(dc.getDirectory());
 	var area_body = new Array(); // global array for area of cell body
 	var area_band = new Array(); // global array for area of band 
 	var intensity_per_fp = new Array(); // global array for filopod tip intensity
+	var fp_len = new Array(); // global array for filopod length in micrometers
 //	var acqname = "Capture "; // KJP convention - Default prefix for input files
 	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
 

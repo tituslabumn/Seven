@@ -698,7 +698,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 			var filo_cell_rois = rs_hidden.getRoisAsArray();
 			if (filo_cell_rois.length != fp)
 				IJ.error("failed to load filo-cell ROIs");
-		    
+		    for (var u=0; u<fp; u++) // initialize filo length to 0
+				fp_len[u] = 0;
+						
 			for (var i = 0; i < rs.getCount(); i++) { 
 				// begin reporting 
 				celltab.incrementCounter(); 
@@ -775,15 +777,12 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 							var xcrossing = 0;
 							var ycrossing = 0;
 							var pathlength = 0;
+							//var currentlength = 500;
 							
 							// check for intersection with cell perimeter
 							var fp_roi = filo_cell_rois[u];
 							var fp_slope = getSlope(fp_roi.x1, fp_roi.y1, fp_roi.x2, fp_roi.y2);
 							var fp_inter = getIntercept(fp_roi.x1, fp_roi.y1, fp_roi.x2, fp_roi.y2);
-							//var fp_slope = getSlope(pTips.xpoints[u], pTips.ypoints[u],
-							//	pCells.xpoints[i], pCells.ypoints[i]);
-							//var fp_inter = getIntercept(pTips.xpoints[u], pTips.ypoints[u],
-							//	pCells.xpoints[i], pCells.ypoints[i]);
 							
 							for (var j = 0; j<(outline.npoints-1); j++) {
 								
@@ -796,6 +795,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 
 								var xtemp = getCrossing(fp_slope, fp_inter, lineseg_slope, lineseg_inter);
 								var ytemp = lineseg_slope * xtemp + lineseg_inter;
+								//var templength = distance(xtemp, ytemp, fp_roi.x1, fp_roi.y1); // distance to tip
 								
 								if (DEBUG) {
 									resultstable.incrementCounter();
@@ -812,12 +812,23 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 									resultstable.addValue("yc", ytemp);
 								}
 
-								if (((xtemp >= outline.xpoints[j] && xtemp <= outline.xpoints[j+1]) ||
-									 (xtemp <= outline.xpoints[j] && xtemp >= outline.xpoints[j+1])) &&
-									((ytemp >= outline.ypoints[j] && ytemp <= outline.ypoints[j+1]) ||
-									 (ytemp <= outline.ypoints[j] && ytemp >= outline.ypoints[j+1])) 
-									&& !((isNaN(xtemp) || isNaN(xtemp-xtemp)) ||
-									 	 (isNaN(ytemp) || isNaN(ytemp-ytemp)))) {
+								var XL_bound = (outline.xpoints[j] >= outline.xpoints[j+1]) ? outline.xpoints[j+1] : outline.xpoints[j];
+								var XU_bound = (outline.xpoints[j] >= outline.xpoints[j+1]) ? outline.xpoints[j] : outline.xpoints[j+1];
+								var YL_bound = (outline.ypoints[j] >= outline.ypoints[j+1]) ? outline.ypoints[j+1] : outline.ypoints[j];
+								var YU_bound = (outline.ypoints[j] >= outline.ypoints[j+1]) ? outline.ypoints[j] : outline.ypoints[j+1];
+								var XLfp_bound = (fp_roi.x1 >= fp_roi.x2) ? fp_roi.x2 : fp_roi.x1;
+								var XUfp_bound = (fp_roi.x1 >= fp_roi.x2) ? fp_roi.x1 : fp_roi.x2;
+								var YLfp_bound = (fp_roi.y1 >= fp_roi.y2) ? fp_roi.y2 : fp_roi.y1;
+								var YUfp_bound = (fp_roi.y1 >= fp_roi.y2) ? fp_roi.y1 : fp_roi.y2;
+								
+								if ((xtemp >= XL_bound && xtemp <= XU_bound) &&
+									(ytemp >= YL_bound && ytemp <= YU_bound) &&
+									(xtemp >= XLfp_bound && xtemp <= XUfp_bound) &&
+									(ytemp >= YLfp_bound && ytemp <= YUfp_bound) &&
+									!((isNaN(xtemp) || isNaN(xtemp-xtemp)) ||
+									  (isNaN(ytemp) || isNaN(ytemp-ytemp))) ) {
+									 // && (templength < currentlength)) {
+									 //	currentlength = templength;
 										nSteps = j;
 										xcrossing = xtemp;
 										ycrossing = ytemp;
@@ -853,6 +864,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 							}
 
 							if (pathlength > 0) {
+								//IJ.showMessage("cell id = "+IJ.d2s(i,0)+"; "+IJ.d2s(xcrossing)+" "+IJ.d2s(ycrossing)+" "+IJ.d2s(fp_roi.x1)+" "+IJ.d2s(fp_roi.y1));
+								fp_len[u] = distance(xcrossing, ycrossing, fp_roi.x1, fp_roi.y1) * dx;
 								band_with_fp.drawDot(pathlength, midheight);
 								pBandCrossing.addPoint(pathlength, midheight);
 							}
@@ -1142,6 +1155,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		            filotab.addValue("Cell ID", cellid); 
 		            filotab.addValue("Tip:Cell Ratio", tipbody); 
 		            filotab.addValue("Tip:Band Ratio", tipband); 
+		            filotab.addValue("Length (um)", fp_len[v]); 
 			    } 
 			}
  
