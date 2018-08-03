@@ -319,7 +319,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxheight_um) {
 	var stats = img1.getStatistics(MEASUREMENTS); 
 	var fullarea = stats.area; 
 	var timestep = dt; 
-	var kymodir = new File(anadir+sep+"Kymograph"); 
+	var kymodir = new File(anadir+"Kymograph"+sep); 
 	var paramtab = new Packages.ij.measure.ResultsTable(); 
 	paramtab.setPrecision(digits); 
  
@@ -361,7 +361,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxheight_um) {
 				rois[i].setStrokeWidth(1); 
 				img2.setRoi(rois[i]); 
 		        rs.select(img2, i); 
-				saveArray(ScanLine(img2), anadir, "linescan", dx, i); 
+				saveArray(ScanLine(img2), kymodir, "linescan", dx, i); 
 		    } 
 		    img2.changes = false; 
 		    if (!DEBUG) { img2.close(); } 
@@ -609,7 +609,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					}
 				}
 				var tipfile = anadir+"sample-angle-result-per-cell-"+i+"-"+anaversion+".txt";
-				saveText(tipfile, mydata, false);  
+				// disabled - redundant with filo spacing analysis
+				//saveText(tipfile, mydata, false);  
 			}
 		}	
 		 
@@ -624,6 +625,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		// Draw ROIs
 		var rs = new RoiSet(); 
 		var roifile = new File(anadir+"filo-spacing-RoiSet"+anaversion+".zip"); 
+		var linescandir = new File(anadir+linescantag+sep); 
+		if (!linescandir.isDirectory())
+			linescandir.mkdir();
 		
 		for (var u=0; u<fp; u++) { 
 			index = cell_per_fp[u];  // find which cell the fp is from
@@ -663,7 +667,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 				img2.setRoi(rois[u]); 
 				img3.setRoi(rois[u]); 
 				// Calculate line scan using the masked img2 
-				saveArray(ScanLine(img2), anadir, linescantag, dx, u);
+				saveArray(ScanLine(img2), linescandir, linescantag, dx, u);
 	 
 				// Mark with a line on the masked img2 & unmasked img3
 				ip2.draw(rois[u]); 
@@ -692,6 +696,12 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 	    	roifile = new File(anadir+"cell-body-RoiSet"+anaversion+"+.roi"); 
 	    } 
 	    if (banded && roifile.exists()) { 
+			var spacingdir = new File(anadir+"band-spacing"+sep);
+			var filospacingdir = new File(anadir+"filo-spacing"+sep);
+			if (!spacingdir.isDirectory())
+				spacingdir.mkdir();
+			if (!filospacingdir.isDirectory())
+				filospacingdir.mkdir();
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
 			
@@ -896,7 +906,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					//     original analysis - points of max intensity in band
 					var band_img = new Packages.ij.ImagePlus("band intensity", band);
 					if (DEBUG) { band_img.show(); }
-					AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i, anadir); 
+					AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i, 
+						spacingdir, "band-spacing");
 					
 					//		filo analysis - points of intersection with band
 					var band_with_fp_img = new Packages.ij.ImagePlus("", band_with_fp);
@@ -904,7 +915,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 						var band_with_fp_roi = new Packages.ij.gui.PolygonRoi(pBandCrossing,
 							Packages.ij.gui.Roi.FREELINE); 
 						band_with_fp_img.setRoi(band_with_fp_roi);
-						AnalyzeSpacing(band_with_fp_img, band_with_fp_roi, dx, filospacingtab, i, anadir);
+						AnalyzeSpacing(band_with_fp_img, band_with_fp_roi, dx, filospacingtab, i, 
+							filospacingdir, "filo-spacing");
 					} else {
 						filospacingtab.incrementCounter(); // add an empty row for cells w/o filos
 					}
@@ -915,7 +927,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					var bs = band_img.getStatistics(MEASUREMENTS); 
 					area_band[i] = bs.area; 
 					//cell_band[i] = bs.mean-bgval; // calculated below from peak cortex intensity
-					saveArray(ScanLine(img1), anadir, "spacing", dx, i); 
+					saveArray(ScanLine(img1), spacingdir, "band-intensity", dx, i); 
 		
 					var borderpixels = ScanLine(band_img);									
 					var denom = 0;
@@ -1070,8 +1082,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					 
 					// clean up 
 					rs_hidden.close();
-					saveImage(band_img, format, anadir, "spacing-"+i, anaversion, true); 
-					saveImage(band_with_fp_img, format, anadir, "filo-spacing-"+i, anaversion, true); 
+					saveImage(band_img, format, spacingdir, "spacing-"+i, anaversion, DEBUG); 
+					saveImage(band_with_fp_img, format, filospacingdir, "filo-spacing-"+i, anaversion, DEBUG); 
 					
 					band_img.changes = false; 
 					band_with_fp_img.changes = false; 
@@ -1540,7 +1552,7 @@ function saveArray(arraydata, dir, name, pixelwidth, index) {
 		text += IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(arraydata[j],digits)+newline; 
 		//IJ.log(IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(linescan[j],0)); 
 	} 
-	var textfile = dir+name+"-"+IJ.d2s(index,0)+"-"+anaversion+".txt"; 
+	var textfile = dir+sep+name+"-"+IJ.d2s(index,0)+"-"+anaversion+".txt"; 
 	//var text = IJ.getLog(); 
 
 	// Save as text file
@@ -1965,17 +1977,17 @@ function fitKymograph(x, y, minsize, minslope, minrsq) {
 	return result; 
 } 
 
-function AnalyzeBandMaxima(band, bandnoise, dx, spacingtab, index, anadir) {		
+function AnalyzeBandMaxima(band, bandnoise, dx, spacingtab, index, anadir, scantag) {		
 	IJ.run(band, "Select None", "");
 	
 	// note that for thicker bands it is desirable to add the exclude keyword, i.e.,
 	// "... output=[Point Selection] exclude" -- but it excludes everything in thin bands.
 	IJ.run(band, "Find Maxima...", 
 		"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection]"); 
-	AnalyzeSpacing(band, band.getRoi(), dx, spacingtab, index, anadir);
+	AnalyzeSpacing(band, band.getRoi(), dx, spacingtab, index, anadir, scantag);
 }
 
-function AnalyzeSpacing(band, bandpoints, dx, spacingtab, index, anadir) {
+function AnalyzeSpacing(band, bandpoints, dx, spacingtab, index, anadir, scantag) {
 	spacingtab.incrementCounter(); 
 	
 	if (bandpoints != null && bandpoints.getFloatPolygon() != null) { 
@@ -2026,7 +2038,7 @@ function AnalyzeSpacing(band, bandpoints, dx, spacingtab, index, anadir) {
 		spacingtab.addValue("Neighbor spacing - random expectation (um)", neighbormeanx_sim);
 		spacingtab.addValue("Neighbor skewness - random expectation", skew_sim);  
 
-		saveArray(neighborx, anadir, "filo-spacing", 1, index);
+		saveArray(neighborx, anadir, scantag, 1, index);
 	} else {
 		if (DEBUG) { IJ.showMessage("ROI for spacing analysis is empty"); }
 	}
