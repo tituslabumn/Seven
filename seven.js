@@ -626,7 +626,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		var roifile = new File(anadir+"filo-spacing-RoiSet"+anaversion+".zip"); 
 		
 		for (var u=0; u<fp; u++) { 
-			index = cell_per_fp[u]; 
 			// IJ.log("Cell index count =" + index + "Number of filopod attached =" + fp_per_cell[index]);
 			//IJ.log("Filopodia u count =" + u);
 			if (index >= 0 && fp_per_cell[index] >= minfp) { 
@@ -641,20 +640,24 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 				var scanroi = new Packages.ij.gui.Line(0,0,0,0); 
 			}
 			var roiname = (index >= 0) ? "filo-cell-"+IJ.d2s(index,0) : "n/a";
+			//IJ.showMessage(roiname);
 			roiname += "-"+IJ.d2s(u,0);
 			StoreRoi(img3, scanroi, roiname, rs);
 		} 
 		// manual user adjustment of filo ROIs
 		if (filosemi) {
-			img2.getProcessor().setMinAndMax(0,20000);
+			img2.getProcessor().setMinAndMax(0,10000);
 			img2.show();
-			rs.select(img2, 0); 
+			rs.select(img2, 0); // show window with first ROI selected in roimanager
 			new Packages.ij.gui.WaitForUserDialog( 
 				"Manual Corrections to ROI", "Please press OK when done.").show(); 
 		}
 	
 		var rois = rs.getRoisAsArray(); 
+		if (rois.length != fp)
+			IJ.error("list of filo ROIs does not match number of filos");
 		for (var u=0; u<fp; u++) { 
+			index = cell_per_fp[u]; // find which cell the fp is from
 			if (index >= 0 && fp_per_cell[index] >= minfp) { 
 				img2.setRoi(rois[u]); 
 				img3.setRoi(rois[u]); 
