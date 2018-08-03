@@ -844,9 +844,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 								}
 							} 
 
-							if (nSteps == 0) {
+							if (nSteps == 0 || nSteps == 1) {
 								pathlength = band_w;
-							} else if (nSteps > 0) { 
+							} else if (nSteps > 1) { 
 								var path_to_x = new Packages.ij.process.FloatPolygon(); 
 								for (var j = 0; j<nSteps+1; j++)
 									path_to_x.addPoint(outline.xpoints[j], outline.ypoints[j]); 
@@ -860,7 +860,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 								img3.setRoi(points_to_x); 
 
 								var band_with_xcrossing = strt.straightenLine(img3, boxheight);
-								pathlength = band_with_xcrossing.getWidth(); 
+								if (band_with_xcrossing != null)
+									pathlength = band_with_xcrossing.getWidth(); 
+								else 
+									IJ.showMessage("failed to get perimeter, cell = "+
+										IJ.d2s(i,0)+", fp = "+IJ.d2s(u,0)+", nSteps = "+IJ.d2s(nSteps,0));
 							} else {
 								if (DEBUG)
 									IJ.showMessage("Failed to assign tip to perimeter: x = "+
@@ -901,6 +905,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 							Packages.ij.gui.Roi.FREELINE); 
 						band_with_fp_img.setRoi(band_with_fp_roi);
 						AnalyzeSpacing(band_with_fp_img, band_with_fp_roi, dx, filospacingtab, i, anadir);
+					} else {
+						filospacingtab.incrementCounter(); // add an empty row for cells w/o filos
 					}
 					
 					// Analyze banded image intensity 
@@ -1073,10 +1079,13 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 						band_img.close();
 						band_with_fp_img.close();
 					} 
-				} 
-			} 
+				} else { // add empty row for cells < minarea
+					spacingtab.incrementCounter();
+					filospacingtab.incrementCounter();
+				} // end if (cellarea[i] > minarea)
+			} // end for i in cells
 			//standardize(cell_band, cell_body, area_band, area_body);  
-		} 
+		} // end if (banded && roifile.exists())
 		
 		// Clean up from first pass 
 		img1.changes = false; 
