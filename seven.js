@@ -626,6 +626,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		var roifile = new File(anadir+"filo-spacing-RoiSet"+anaversion+".zip"); 
 		
 		for (var u=0; u<fp; u++) { 
+			index = cell_per_fp[u];  // find which cell the fp is from
 			// IJ.log("Cell index count =" + index + "Number of filopod attached =" + fp_per_cell[index]);
 			//IJ.log("Filopodia u count =" + u);
 			if (index >= 0 && fp_per_cell[index] >= minfp) { 
