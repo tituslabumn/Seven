@@ -17,5 +17,4 @@ var root = new File(dc.getDirectory());
 //	var acqname = "Capture "; // KJP convention - Default prefix for input files
 	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
 
-//    IJ.showMessage("acqname", acqname); 
 seven_multi(root, acqname);

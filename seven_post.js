@@ -5,12 +5,8 @@ load(IJ.getDirectory("ImageJ")+"seven.js");
 
 var reanalyze = true; // If false, summarize data but don't reanalyze
 var linescantag = "newzeroscan"; // Prefix for length scans
-var anaversion = "6";
+var anaversion = "8";
 var sep = File.separator;
-
-//var dc = new Packages.ij.io.DirectoryChooser("Choose the experiment analysis directory:");
-//var root = new Packages.java.io.File(dc.getDirectory());
-//var dirlist = root.list();
 
 var od = OpenDialog("Choose the list of input directories:");
 
@@ -64,14 +60,14 @@ for (var u = 0; u < exptlist.length; u++) {
 	saveText(cellpath, "", false);
 	saveText(filopath, "", false);
 	saveText(kymopath, "", false);
-	IJ.log(IJ.d2s(dirlist.length,0));
+	IJ.log("Searching "+IJ.d2s(dirlist.length,0)+" directories");
 
 	// Create per-experiment results directories
-	var tipexdir = new File(tipdir+sep+root.getName()+"_"+IJ.d2s(u,0));
+	var tipexdir = new File(tipdir+sep+root.getName()+"_"+IJ.d2s(u+1,0));
 	tipexdir.mkdir();
-	var lengthexdir = new File(lengthdir+sep+root.getName()+"_"+IJ.d2s(u,0));
+	var lengthexdir = new File(lengthdir+sep+root.getName()+"_"+IJ.d2s(u+1,0));
 	lengthexdir.mkdir();
-	var spaceexdir = new File(spacedir+sep+root.getName()+"_"+IJ.d2s(u,0));
+	var spaceexdir = new File(spacedir+sep+root.getName()+"_"+IJ.d2s(u+1,0));
 	spaceexdir.mkdir();
 	
 	for (var i = 0; i<dirlist.length; i++) {
