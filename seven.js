@@ -199,13 +199,13 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 							new Packages.ij.gui.WaitForUserDialog( 
 								"Manual Corrections", "Please press OK when done.").show(); 
 						} 
-						saveImage(mask, maskformat, anadir, subname+"/Capture-mask", parseInt(anaversion), true); 
+						saveImage(mask, maskformat, anadir, subname+sep+"Capture-mask", parseInt(anaversion), true); 
  
 						// Apply the mask to the image (not required, but useful for visual inspection) 
 						ic = new  Packages.ij.plugin.ImageCalculator(); 
 						img2 = ic.run("Min stack create", mask, img); 
 						invertImage(img2); 
-						saveImage(img2, format, anadir, subname+"/Capture-threshold", parseInt(anaversion), true); 
+						saveImage(img2, format, anadir, subname+sep+"Capture-threshold", parseInt(anaversion), true); 
  
 						//Clean up 
 						mask.changes = false; 
@@ -353,7 +353,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxheight_um) {
 		kymograph(img1, rs, timestep, boxheight_um, paramtab, kymodir); 
 	     
 	    // Measure intensity in the masked image 
-	    var masked = new File(anadir+sep+"Capture-mask-body"+anaversion+"-0."+format); 
+	    var masked = new File(anadir+"Capture-mask-body"+anaversion+"-0."+format); 
 	    if (masked.isFile()) { 
 	    	var img2 = IJ.openImage(masked); 
 		    var rois = rs.getRoisAsArray(); 
@@ -361,7 +361,7 @@ function AnalyzeScans(img1, imagefile, anadir, boxheight_um) {
 				rois[i].setStrokeWidth(1); 
 				img2.setRoi(rois[i]); 
 		        rs.select(img2, i); 
-				saveArray(ScanLine(img2), kymodir, "linescan", dx, i); 
+				saveArray(ScanLine(img2), kymodir, "linescan", dx, i+1); 
 		    } 
 		    img2.changes = false; 
 		    if (!DEBUG) { img2.close(); } 
@@ -551,7 +551,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		var maxdistance_um = 20; // maximum distance from cell center in microns 
 		var maxpixeldist = maxdistance_um/dx;  
 		var regfp = fp; 
-		var cells_with_fp = nCells; 
+		var cells_with_fp = 0; 
 	 
 	    // Set line color on the masked img2 to gray for contrast with white mask 
 		ip2.setColor(Color.GRAY); 
@@ -572,7 +572,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					reg = v; 
 				} 
 			} 
-			if (reg >= 0) { 
+			if (reg >= 0 && area_body[reg] > minarea) { 
 				// Select the line connecting tip to cell center-of-area 
 				// Is this step necessary???
 				img2.setRoi( 
@@ -582,6 +582,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 	 
 				// Update the count & intensity vector using the unmasked img1 
 				fp_per_cell[reg]++; 
+				if (fp_per_cell[reg] == minfp)
+					cells_with_fp++;
 				intensity_per_fp[u] = getValue(img1, pTips.xpoints[u], pTips.ypoints[u]) 
 					- bgval; // background-corrected peak intensity at tip 
 				cell_per_fp[u] = reg; 
@@ -608,20 +610,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 						//		"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
 					}
 				}
-				var tipfile = anadir+"sample-angle-result-per-cell-"+i+"-"+anaversion+".txt";
+				var tipfile = anadir+"sample-angle-result-per-cell-"+IJ.d2s(i+1,0)+"-"+anaversion+".txt";
 				// disabled - redundant with filo spacing analysis
 				//saveText(tipfile, mydata, false);  
 			}
 		}	
-		 
-		// Trim the count of cells 
-		for (var z=0;z<nCells;z++) { 
-			if (fp_per_cell[z] == 0) { cells_with_fp--; } 
-		}
 	} // endif (searchtips) 
  
 	// Save ROIs on first pass, on second pass save log as well 
-	if (!firstpass) { 
+	if (!firstpass) { 		
 		// Draw ROIs
 		var rs = new RoiSet(); 
 		var roifile = new File(anadir+"filo-spacing-RoiSet"+anaversion+".zip"); 
@@ -667,7 +664,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 				img2.setRoi(rois[u]); 
 				img3.setRoi(rois[u]); 
 				// Calculate line scan using the masked img2 
-				saveArray(ScanLine(img2), linescandir, linescantag, dx, u);
+				saveArray(ScanLine(img2), linescandir, linescantag, dx, u+1);
 	 
 				// Mark with a line on the masked img2 & unmasked img3
 				ip2.draw(rois[u]); 
@@ -678,7 +675,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		rs.runCommand("Save",roifile.getCanonicalPath()); 
 		
 		if (DEBUG) { 
-			saveImage(img3, format, anadir, "img3-"+anaversion, 0, true); 
+			saveImage(img3, format, anadir, "band-crossing-"+anaversion, 0, true); 
 		} 
 
 		// table for reporting results	 
@@ -786,7 +783,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					// Find intersection points by searching filopodia list
 					for (var u=0; u<fp; u++) { 
 						// search for the filos belonging to the current cell
-						if (cell_per_fp[u] == i && fp_per_cell[index] >= minfp) { 
+						if (cell_per_fp[u] == i && fp_per_cell[i] >= minfp) { 
 							var nSteps = -1;
 							var xcrossing = 0;
 							var ycrossing = 0;
@@ -883,9 +880,22 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 
 							if (pathlength > 0) {
 								//IJ.showMessage("cell id = "+IJ.d2s(i,0)+"; "+IJ.d2s(xcrossing)+" "+IJ.d2s(ycrossing)+" "+IJ.d2s(fp_roi.x1)+" "+IJ.d2s(fp_roi.y1));
-								fp_len[u] = distance(xcrossing, ycrossing, fp_roi.x1, fp_roi.y1) * dx;
+								
+								// record the crossing point
 								band_with_fp.drawDot(pathlength, midheight);
 								pBandCrossing.addPoint(pathlength, midheight);
+
+								// calculate fp length and update the fp counting data
+								fp_len[u] = distance(xcrossing, ycrossing, fp_roi.x1, fp_roi.y1) * dx;					
+							} else if (cell_per_fp[u] >= 0) { 
+								// update data for newly unregistered fps
+								if (DEBUG) { IJ.showMessage("found zero length fp, trying to unregister"); }
+								regfp--; // does not count toward total registered fps
+								cell_per_fp[u] = -1; // no longer registered to a cell
+								intensity_per_fp[u] = 0; // no longer has tip intensity
+								fp_per_cell[i]--; // does not count in this cell
+								if (fp_per_cell[i] == (minfp-1))
+									cells_with_fp--; // decrease the count when cell falls below minfp	
 							}
 						} 
 					}
@@ -906,7 +916,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					//     original analysis - points of max intensity in band
 					var band_img = new Packages.ij.ImagePlus("band intensity", band);
 					if (DEBUG) { band_img.show(); }
-					AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i, 
+					AnalyzeBandMaxima(band_img, noise, dx, spacingtab, i+1, 
 						spacingdir, "band-spacing");
 					
 					//		filo analysis - points of intersection with band
@@ -915,7 +925,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 						var band_with_fp_roi = new Packages.ij.gui.PolygonRoi(pBandCrossing,
 							Packages.ij.gui.Roi.FREELINE); 
 						band_with_fp_img.setRoi(band_with_fp_roi);
-						AnalyzeSpacing(band_with_fp_img, band_with_fp_roi, dx, filospacingtab, i, 
+						AnalyzeSpacing(band_with_fp_img, band_with_fp_roi, dx, filospacingtab, i+1, 
 							filospacingdir, "filo-spacing");
 					} else {
 						filospacingtab.incrementCounter(); // add an empty row for cells w/o filos
@@ -927,7 +937,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					var bs = band_img.getStatistics(MEASUREMENTS); 
 					area_band[i] = bs.area; 
 					//cell_band[i] = bs.mean-bgval; // calculated below from peak cortex intensity
-					saveArray(ScanLine(img1), spacingdir, "band-intensity", dx, i); 
+					saveArray(ScanLine(img1), spacingdir, "band-intensity", dx, i+1); 
 		
 					var borderpixels = ScanLine(band_img);									
 					var denom = 0;
@@ -1082,8 +1092,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 					 
 					// clean up 
 					rs_hidden.close();
-					saveImage(band_img, format, spacingdir, "spacing-"+i, anaversion, DEBUG); 
-					saveImage(band_with_fp_img, format, filospacingdir, "filo-spacing-"+i, anaversion, DEBUG); 
+					saveImage(band_img, format, spacingdir, "spacing-"+IJ.d2s(i+1,0), anaversion, DEBUG); 
+					saveImage(band_with_fp_img, format, filospacingdir, "filo-spacing-"+IJ.d2s(i+1,0), anaversion, DEBUG); 
 					
 					band_img.changes = false; 
 					band_with_fp_img.changes = false; 
@@ -1103,7 +1113,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 		img1.changes = false; 
 		if (!DEBUG) { img1.close(); } 
  
-		if (searchtips) { 
+		if (searchtips) { 			
 			IJ.log("Cell count = "+IJ.d2s(nCells,0)); 
 			IJ.log("Raw FP count = "+IJ.d2s(nRawTips,0)); 
 			IJ.log("FP count = "+IJ.d2s(fp,0)); 
@@ -1139,7 +1149,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 				if (fp_per_cell[u] > 0) { 
 					cell_tipavg[u] /= fp_per_cell[u]; 
 				} 
-				IJ.log("Cell ID = "+IJ.d2s(u,0)+" Number of Tip = " 
+				IJ.log("Cell ID = "+IJ.d2s(u+1,0)+" Number of Tip = " 
 					+ IJ.d2s(fp_per_cell[u],0)+" Mean Cell Intensity = " 
 					+ IJ.d2s(cell_body[u],0)+"Mean Tip Intensity = " 
 					+ IJ.d2s(cell_tipavg[u],0)); 
@@ -1152,7 +1162,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 			} 
 			 
 			IJ.log("Filopod information (summary follows)"); 
-			var reg = 0; 
+			var fp_count = 0; 
 			var filotab = new Packages.ij.measure.ResultsTable(); 
 			filotab.setPrecision(digits);
 
@@ -1164,20 +1174,20 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxheight_um, firstpass)
 			    filotab.incrementCounter(); 
 			    var cellid = cell_per_fp[v]; 
 			    if (cellid >= 0) { 
-			    	reg++; 
+			    	fp_count++; 
 				    var tipbody = intensity_per_fp[v] / cell_body[cellid]; 
 				    var tipband = intensity_per_fp[v] / cell_band[cellid]; 
 				 
-				    IJ.log("\t" + IJ.d2s(reg, 0) + "\t" 
+				    IJ.log("\t" + IJ.d2s(fp_count, 0) + "\t" 
 				    	+ IJ.d2s(intensity_per_fp[v], 0) + "\t" 
 			            + IJ.d2s(cell_body[cellid],0) + "\t" 
-			            + IJ.d2s(cellid, 0) + "\t" 
+			            + IJ.d2s(cellid+1, 0) + "\t" 
 			            + IJ.d2s(tipbody, digits) + "\t" 
 			            + IJ.d2s(tipband, digits)); 
 			             
 		            filotab.addValue("Tip intensity", intensity_per_fp[v]); 
 		            filotab.addValue("Cell intensity", cell_body[cellid]); 
-		            filotab.addValue("Cell ID", cellid); 
+		            filotab.addValue("Cell ID", cellid+1); 
 		            filotab.addValue("Tip:Cell Ratio", tipbody); 
 		            filotab.addValue("Tip:Band Ratio", tipband); 
 		            filotab.addValue("Length (um)", fp_len[v]); 
@@ -1734,7 +1744,7 @@ function kymograph(img0, rs, dt, boxheight_um, paramtab, resultsdir) {
 		img.setRoi(rois[j]); 
 		rs.select(j); 
 		var n = img.getSlice(); 
-		var outname = img0.getTitle()+"_"+IJ.d2s(j,0)+"_"+IJ.d2s(n,0); 
+		var outname = img0.getTitle()+"_"+IJ.d2s(n,0); 
 		rs.runCommand("Rename", outname); 
 		var line = img.getRoi(); 
 		// align the filopod with x-axis and transform ROI coordinates to the final image 
@@ -1768,7 +1778,7 @@ function kymograph(img0, rs, dt, boxheight_um, paramtab, resultsdir) {
 			//IJ.run(reslice, "Z Project...", "projection=[Max Intensity]"); 
 			//var kymograph = IJ.getImage(); 
 			//IJ.run(kymograph, "Rotate 90 Degrees Left", ""); 
-			saveImage(kymograph, format, resultsdir, outname, j, true); 
+			saveImage(kymograph, format, resultsdir, outname, j+1, true); 
 			var kymograph2 = kymograph.duplicate(); 
  
 			processKymograph(kymograph2); 
@@ -1780,8 +1790,8 @@ function kymograph(img0, rs, dt, boxheight_um, paramtab, resultsdir) {
 			// Save the kymograph as a delimited text file
 			outputtab.save(resultsdir+sep+outname+"."+resultsformat); 
 			drawRoi(kymograph, kymograph2.getRoi()); 
-			saveImage(kymograph, format, resultsdir, outname+"_FIT", j, true); 
-			saveImage(kymograph2, maskformat, resultsdir, outname, j, true); 
+			saveImage(kymograph, format, resultsdir, outname+"_FIT", j+1, true); 
+			saveImage(kymograph2, maskformat, resultsdir, outname, j+1, true); 
  
 			reslice.changes = false; 
 			kymograph.changes = false; 
