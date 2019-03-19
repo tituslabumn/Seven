@@ -1,7 +1,6 @@
    dir = getDirectory("Choose a Directory ");
    orgdir = dir;
-   macrodir = getDirectory("imagej");
-   runMacro(macrodir+"replace_angles.ijm", dir);
+   
    count = 0;
    countFiles(dir);
    n = 0;
