@@ -397,7 +397,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	// get image dimensions
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
-	var n = img1.getNSlices(); 
+	var nFrames = img1.getNSlices(); // ImageJ parses images as XYZ by default (treat as XYT)
 	var timestep = getTimingFromLogfile(img1, imagefile, dt); 
 	
 	// invert mask 			
@@ -958,7 +958,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			imagetab.addValue("Fraction of cells with registered filopodia", 
 				IJ.d2s(cells_with_fp/nCells,3)); 
 			imagetab.addValue("Frame time (s)", IJ.d2s(timestep, digits)); 
-			imagetab.addValue("Elapsed time (s)", IJ.d2s(timestep*n, digits)); 
+			imagetab.addValue("Elapsed time (s)", IJ.d2s(timestep*nFrames, digits)); 
 			//imagetab.addValue("Cortex:Cell Ratio", IJ.d2s(cell_band/cell_body, digits)); 
 
 			// Log per-cell information
