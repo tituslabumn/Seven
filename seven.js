@@ -778,10 +778,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var denom = 0;
 					var mx1 = new Complex(0, 0);
 					var mx2 = new Complex(0, 0);
-					var n = borderpixels.length;
+					var nPixels = borderpixels.length;
 					
 					// background subtraction
-					for (var j = 0; j<n; j++) {
+					for (var j = 0; j<nPixels; j++) {
 						borderpixels[j] -= bgval;
 					}
 					
@@ -800,7 +800,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var maxval = 0;
 					var xmin = 0; // position of min intensity in pixels
 					var xmax = 0; // position of max intensity in pixels
-					for (var j = 0; j<n; j++) {
+					for (var j = 0; j<nPixels; j++) {
 						if (smoothedpixels[j] < minval) {
 							minval = smoothedpixels[j];
 							xmin = j;
@@ -815,8 +815,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var gfpval = 200; // ??? need to determine 
 					var kappa = 4; // width parameter of von Mises distribution = 1/dispersion
 					var bessel = 11.30192; // besseli(4,0) - 95% density from -1.08 to +1.08 rad = 124 deg
-					var radstep = 2*Math.PI/n;
-					for (var j = 0; j<n; j++) {
+					var radstep = 2*Math.PI/nPixels;
+					for (var j = 0; j<nPixels; j++) {
 						var cj = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
 						var cj2 = cj.RealPow(2);
 						
@@ -831,7 +831,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					}
 					mx1 = mx1.Scale(1/denom); // first moment vector
 					mx2 = mx2.Scale(1/denom); // second moment vector
-					var mxangle = new Angle(mx1.Arg(), n, dx); // mean angle in range [-PI..PI] radians
+					var mxangle = new Angle(mx1.Arg(), nPixels, dx); // mean angle in range [-PI..PI] radians
 					//cell_band[i] = smoothedpixels[mxangle.pixel]; // alt def = intensity at mean angle
 
 					// Confidence limits of the mean
@@ -842,8 +842,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						Math.sqrt(2*denom*(2*Math.pow(denom*mx1.Abs(),2)-denom*chi2CI)/
 						(4*denom-chi2CI))/
 						(denom*mx1.Abs()));
-					var mxanglelower = new Angle(mx1.Arg() - lim, n, dx);
-					var mxangleupper = new Angle(mx1.Arg() + lim, n, dx);
+					var mxanglelower = new Angle(mx1.Arg() - lim, nPixels, dx);
+					var mxangleupper = new Angle(mx1.Arg() + lim, nPixels, dx);
 
 					// Circular & angular variance
 					var mxanglevar = 2*(1 - mx1.Abs()); // range [0..2]
@@ -867,7 +867,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 					// Pewsey skewness statistic
 					var pewseyskew = 0;
-					for (var j = 0; j<n; j++) {
+					for (var j = 0; j<nPixels; j++) {
 						pewseyskew += borderpixels[j] * 
 							Math.sin(2*ComplexDist(j*radstep, mxangle.rad));
 					}
@@ -884,14 +884,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					//	rayleighprob = Math.exp(Math.sqrt(radicand)	- (1 + 2*denom));
 
 					// Hodges-Ajne test, Zar 2010, eq. 27.8
-					var m = n;
-					for (var j = 0; j<n; j++) {
-						var halfcircle = Math.ceil(n/2);
+					var m = nPixels;
+					for (var j = 0; j<nPixels; j++) {
+						var halfcircle = Math.ceil(nPixels/2);
 						var temp = 0;
 						for (var k = 0; k<halfcircle; k++) {
 							var ind = j+k;
-							if (ind >= n)
-								ind -= n;
+							if (ind >= nPixels)
+								ind -= nPixels;
 							temp += borderpixels[ind];
 						}
 						if (temp < m)
@@ -902,7 +902,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						Math.exp(-Math.pow(Math.PI, 2) / (8 * Math.pow(hodgesA, 2)));
 						
 					// Intensity-weighted mean X position
-					celltab.addValue("Cell Perimeter (um)", n*dx);
+					celltab.addValue("Cell Perimeter (um)", nPixels*dx);
 					celltab.addValue("Lower Position (um)", mxanglelower.dist);
 					celltab.addValue("Mean Position (um)", mxangle.dist);
 					celltab.addValue("Upper Position (um)", mxangleupper.dist);
