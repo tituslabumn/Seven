@@ -359,15 +359,17 @@ function ScanLine(img, dir, name, pixelwidth, index) {
 	var linescan = profileplot.getProfile(); 
 	//var text = "Distance (um)\tIntensity (A.U.)"+newline; 
 	var text = "";
-	for (var j = 0; j < linescan.length; j++) { 
-		text += IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(linescan[j],0)+newline; 
-		//IJ.log(IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(linescan[j],0)); 
-	} 
-	var textfile = dir+name+"-"+IJ.d2s(index,0)+"-"+anaversion+".txt"; 
-	//var text = IJ.getLog(); 
+	if (linescan != null) {
+		for (var j = 0; j < linescan.length; j++) { 
+			text += IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(linescan[j],0)+newline; 
+			//IJ.log(IJ.d2s(j*pixelwidth, digits)+"\t"+IJ.d2s(linescan[j],0)); 
+		} 
+		var textfile = dir+name+"-"+IJ.d2s(index,0)+"-"+anaversion+".txt"; 
+		//var text = IJ.getLog(); 
 
-	// Save the linescan as text file
-	saveText(textfile, text, false); 
+		// Save the linescan as text file
+		saveText(textfile, text, false); 
+	}
 } 
  
 // Analysis for counting filopodia tips and registering to cells 
