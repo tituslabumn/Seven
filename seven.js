@@ -540,10 +540,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		var maxpixeldist = maxdistance_um/dx;  
 		var regfp = fp; 
 		var cells_with_fp = nCells; 
-	 
-	    // need to set line color here for contrast with white mask 
-		img2.setColor(Color.GRAY); 
-	 
+	 	 
 		for (var u=0; u<fp; u++) { 
 			var score = 1e6; 
 			var reg = -1; 
@@ -576,6 +573,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			} 
 		} 
 	 
+		// Generate intermediate image for filo spacing - line color is white for thresholding
+		var img_filos = img1.duplicate();
+		img_filos.setColor(Color.WHITE); 
+		var ip_filos = img_filos.getProcessor(); 
+		
+	    // need to set line color here for contrast with white mask in img2
+		img2.setColor(Color.GRAY); 
+
 		// Second pass to save zeroscans of filopod length 
 		for (var u=0; u<fp; u++) { 
 			index = cell_per_fp[u]; 
@@ -588,12 +593,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				//IJ.log("Angle value = "+ angle);
 				scanroi.setStrokeWidth(1); 
 				img2.setRoi(scanroi); 
+				img_filos.setRoi(scanroi);
 	 
 				// Calculate line scan using the masked img2 
 				ScanLine(img2, anadir, linescantag, dx, u);
 	 
 				// Mark with a line on the masked img2 
 				ip2.draw(scanroi); 
+				ip_filos.draw(scanroi); 
 			} 
 		} 
 		for (var i=0; i<nCells; i++) { 
@@ -644,6 +651,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	    if (banded && roifile.exists()) { 
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
+						
+			// iterate over cells 
 			for (var i = 0; i < rs.getCount(); i++) { 
 				// begin reporting 
 				celltab.incrementCounter(); 
@@ -672,19 +681,36 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
 						rawpoints.getPolygon().ypoints[0]+1); 
 					img2.setRoi(startroi); 
-					// Mark with a line on the masked img2 
+					// Draw a 1px line on the masked img2 
 					ip2.draw(startroi); 
 						
 					var linepoints = new Packages.ij.gui.PolygonRoi(outline,  
 						Packages.ij.gui.Roi.FREELINE); 
-					img1.setRoi(linepoints); 
-					 
-					// Generate banded image from original 
-					IJ.run(img1, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
-					band = IJ.getImage(); 
-	 
+
+					var draw_filos = true;
+					if (draw_filos) {
+						// Apply ROI to image to outline the banded region
+						img_filos.setRoi(linepoints); 
+						 
+						// Generate banded image from original 
+						IJ.run(img_filos, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
+						band = IJ.getImage(); 
+		 				
+		 				// Set intensity threshold
+						var bandnoise = 60000; // the filos are above threshold
+					} else {
+						// Apply ROI to image to outline the banded region
+						img1.setRoi(linepoints); 
+						 
+						// Generate banded image from original 
+						IJ.run(img1, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
+						band = IJ.getImage(); 
+					
+		 				// Set intensity threshold
+						var bandnoise = noise; // defined above based on whole image 
+					}
+					
 					// Find maxima 
-					var bandnoise = noise; // defined above based on whole image 
 					IJ.run(band, "Find Maxima...", 
 						"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
 					var bandpoints = band.getRoi(); 
