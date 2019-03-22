@@ -38,6 +38,7 @@ var maskformat = "zip"; // file extension for mask file, if different
 var resultsformat = "csv"; // file extension for results files
 var linescantag = "newzeroscan"; 
 var anaversion = "7"; 
+var frame = 1; // frame of the raw data to analyze (starting with 1)
 var minfp = 1; // set to 1 unless you know what this does
 var banded = true; // Whether to look at cell perimeter band 
 var thresholdcode = LOCAL_AUTO; // see list above 
@@ -1047,7 +1048,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 function seven_multi(root, acqname) { 
 	var dirlist = root.list(); 
 	var acqlen = acqname.length; 
-	var prefix = "sliced_"; 
+	var prefix = "sliced_frame"+IJ.pad(frame,4)+"_"; 
 	var linescanonly = false; //Skip full analysis and process linescans instead 
 	// To compare multiple thresholding methods, specify an array: 
 	//var thresholds = [-1,0,2000, 1400, 800]; 
@@ -1105,7 +1106,7 @@ function seven_multi(root, acqname) {
 						if (linescanonly) { 
 							seven_scans(imagefile, anadir); 
 						} else { 
-							seven_run(imagefile, anadir, imagetab); 
+							seven_run(imagefile, frame, anadir, imagetab); 
 						} 
 					} 
 				} 
@@ -1123,14 +1124,14 @@ function seven_scans(imagefile, anadir) {
 	AnalyzeScans(img, imagefile, anadir, boxwidth_um); 
 } 
  
-function seven_run(imagefile, anadir, imagetab) { 
+function seven_run(imagefile, frame, anadir, imagetab) { 
 	if (imagefile.isFile()) {
 		ClearLog(); 
 		IJ.log(imagefile); 
 		imagetab.incrementCounter(); 
 		 
 		// Name the image img0 because it will be duplicated for each function call 
-		var img0 = IJ.openImage(imagefile); 
+		var img0 = IJ.openImage(imagefile, frame); 
 	 
 		// Analyze tips (first pass) 
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
@@ -1832,7 +1833,7 @@ function getTimingFromLogfile(img1, imagefile, timestep) {
 		// Add time scale back to image 
 	    var cal = img1.getCalibration(); 
 	    cal.setTimeUnit("s"); 
-		    cal.frameInterval = timestep; 
+		cal.frameInterval = timestep; 
 	    img1.setCalibration(cal); 
 	} else { 
 		IJ.log("No logfile available for "+imagefile.getName()+ 
