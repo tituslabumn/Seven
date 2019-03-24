@@ -762,10 +762,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 					var bandprofile = new Packages.ij.gui.ProfilePlot(band);
 					var borderpixels = bandprofile.getProfile(); 
-									
-					var denom = 0;
-					var mx1 = new Complex(0, 0);
-					var mx2 = new Complex(0, 0);
 					var nPixels = borderpixels.length;
 					
 					// background subtraction
@@ -798,6 +794,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					cell_band[i] = maxval;
 
 					// rescale intensity values to conservatively estimate sample size
+					var denom = 0;
+					var mx1 = new Complex(0, 0);
+					var mx2 = new Complex(0, 0);
 					var gfpval = 200; // ??? need to determine 
 					var kappa = 4; // width parameter of von Mises distribution = 1/dispersion
 					var bessel = 11.30192; // besseli(4,0) - 95% density from -1.08 to +1.08 rad = 124 deg
@@ -1432,7 +1431,11 @@ function noiseThreshold(stats, minSNR) {
 } 
  
 function neighbor(vararray, maxdist, dx) { 
-	// copy java array to jsarray 
+	// this function copies an array of x values, ensures they are sorted and then
+	// returns an array with the nearest neighbor distance (delta x) for each position
+	// assuming a circular x coordinate
+	
+	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
 	for (var i = 0; i<jsarray.length; i++) { 
 		jsarray[i] = vararray[i]; 
