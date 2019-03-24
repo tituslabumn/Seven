@@ -703,9 +703,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					IJ.run(band, "Find Maxima...", 
 						"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
 					var bandpoints = band.getRoi(); 
+					var bandx = new Array();
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
 		 
-						var bandx = bandpoints.getPolygon().xpoints; 
+						bandx = bandpoints.getPolygon().xpoints; 
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
 						var neighborx = neighbor(bandx, band.width, dx);	 
@@ -763,6 +764,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var bandprofile = new Packages.ij.gui.ProfilePlot(band);
 					var borderpixels = bandprofile.getProfile(); 
 					var nPixels = borderpixels.length;
+					var borderweights = new Array(nPixels); 
+					for (var j = 0; j<nPixels; j++) { 
+						borderweights[j] = 0; 
+					} 
+					if (bandpoints != null && bandpoints.getPolygon() != null) { 
+						for (var j = 0; j<bandx.length; j++)
+							borderweights[bandx[j]] = 1;
+					}
+					
 					
 					// background subtraction
 					for (var j = 0; j<nPixels; j++) {
