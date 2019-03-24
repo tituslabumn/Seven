@@ -683,6 +683,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						 
 						// Generate banded image from original 
 						IJ.run(img_filos, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
+						IJ.run(IJ.getImage(), "Reslice [/]...", "output=1 avoid"); 
 						band = IJ.getImage(); 
 		 				
 		 				// Set intensity threshold
@@ -700,8 +701,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					}
 					
 					// Find maxima 
-					IJ.run(band, "Find Maxima...", 
-						"noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude"); 
+					var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection]";
+					if (!draw_filos)
+						bandoptions += " exclude"; 
+					IJ.run(band, "Find Maxima...", bandoptions);
 					var bandpoints = band.getRoi(); 
 					var bandx = new Array();
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
