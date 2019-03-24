@@ -746,11 +746,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						// Reporting 
 						spacingtab.addValue("Number of Particles", bandx.length); 
 						spacingtab.addValue("Band perimeter (um)", cellperimeter); 
-						spacingtab.addValue("Particle spacing - raw (um)", meanx); 
+						spacingtab.addValue("Band perimeter/N (um)", meanx); 
 						spacingtab.addValue("Neighbor spacing (um)", neighbormeanx); 
 						spacingtab.addValue("Neighbor skewness", skew_neighbor); 
-						spacingtab.addValue("Neighbor - expected (um)", IJ.d2s(simexpected,digits)); 
-						spacingtab.addValue("Neighbor - expected skewness", skew_sim);  
+						spacingtab.addValue("Neighbor spacing - expected (um)", IJ.d2s(simexpected,digits)); 
+						spacingtab.addValue("Neighbor skewness - expected", skew_sim);  
 					} 
 					
 					// Analyze banded image intensity 
@@ -775,12 +775,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					
 					// smoothing
 					var USESMOOTH = false;	
-					var smoothwidth_um = 1; // width of the smoothing window in micrometers
-					var smoothwidth = Math.ceil(smoothwidth_um/dx); // width in pixels
-					smoothedpixels = smooth(borderpixels, smoothwidth);
-					
 					if (USESMOOTH) {
-						borderpixels = smoothedpixels;
+						var smoothwidth_um = 1; // width of the smoothing window in micrometers
+						var smoothwidth = Math.ceil(smoothwidth_um/dx); // width in pixels
+						borderpixels = smooth(borderpixels, smoothwidth);
 					}
 
 					// get min and max of pixel intensities
@@ -789,11 +787,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var xmin = 0; // position of min intensity in pixels
 					var xmax = 0; // position of max intensity in pixels
 					for (var j = 0; j<nPixels; j++) {
-						if (smoothedpixels[j] < minval) {
-							minval = smoothedpixels[j];
+						if (borderpixels[j] < minval) {
+							minval = borderpixels[j];
 							xmin = j;
-						} else if (smoothedpixels[j] > maxval) {
-							maxval = smoothedpixels[j];
+						} else if (borderpixels[j] > maxval) {
+							maxval = borderpixels[j];
 							xmax = j;
 						}
 					}
@@ -820,7 +818,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					mx1 = mx1.Scale(1/denom); // first moment vector
 					mx2 = mx2.Scale(1/denom); // second moment vector
 					var mxangle = new Angle(mx1.Arg(), nPixels, dx); // mean angle in range [-PI..PI] radians
-					//cell_band[i] = smoothedpixels[mxangle.pixel]; // alt def = intensity at mean angle
+					//cell_band[i] = borderpixels[mxangle.pixel]; // alt def = intensity at mean angle
 
 					// Confidence limits of the mean
 					//var chi2CI = 1; // 68% CI; chi2(1, 1) ~ 0.68
@@ -889,7 +887,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var hodgesprob = Math.sqrt(2*Math.PI) / hodgesA * 
 						Math.exp(-Math.pow(Math.PI, 2) / (8 * Math.pow(hodgesA, 2)));
 						
-					// Intensity-weighted mean X position
+					// Intensity-weighted mean position and angle on cell perimeter
 					celltab.addValue("Cell Perimeter (um)", nPixels*dx);
 					celltab.addValue("Lower Position (um)", mxanglelower.dist);
 					celltab.addValue("Mean Position (um)", mxangle.dist);
