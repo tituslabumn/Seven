@@ -908,7 +908,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					celltab.addValue("Mean Position (um)", mxangle.dist);
 					celltab.addValue("Upper Position (um)", mxangleupper.dist);
 					celltab.addValue("Mean Angle (deg)", mxangle.deg);
-					celltab.addValue("Width (deg)", lim*2*180/Math.PI);
+					celltab.addValue("Width (deg)", lim*2*180/Math.PI); // on 2 sides of C.I. defined by +/- lim
 					celltab.addValue("Peak Position (um)", xmax*dx);
 					celltab.addValue("Dispersion", mxdisp);
 					//celltab.addValue("Angular Variance (rad^2)", mxanglevar);
