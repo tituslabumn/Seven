@@ -804,7 +804,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					cell_band[i] = maxval;
 
 					// rescale intensity values to conservatively estimate sample size
-					var denom = 0;
+					var sumweights = 0;
 					var mx1 = new Complex(0, 0);
 					var mx2 = new Complex(0, 0);
 					var gfpval = 200; // ??? need to determine 
@@ -822,10 +822,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						borderpixels[j] /= gfpval;
 						mx1 = mx1.Add(cj.Scale(borderpixels[j]));
 						mx2 = mx2.Add(cj2.Scale(borderpixels[j]));
-						denom += borderpixels[j];
+						sumweights += borderpixels[j];
 					}
-					mx1 = mx1.Scale(1/denom); // first moment vector
-					mx2 = mx2.Scale(1/denom); // second moment vector
+					mx1 = mx1.Scale(1/sumweights); // first moment vector
+					mx2 = mx2.Scale(1/sumweights); // second moment vector
 					var mxangle = new Angle(mx1.Arg(), nPixels, dx); // mean angle in range [-PI..PI] radians
 					//cell_band[i] = borderpixels[mxangle.pixel]; // alt def = intensity at mean angle
 
@@ -834,9 +834,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					//var chi2CI = 2.706; // 90% CI; chi2inv(.90, 1) ~ 2.706
 					var chi2CI = 3.841; // 95% CI
 					var lim = Math.acos(
-						Math.sqrt(2*denom*(2*Math.pow(denom*mx1.Abs(),2)-denom*chi2CI)/
-						(4*denom-chi2CI))/
-						(denom*mx1.Abs()));
+						Math.sqrt(2*sumweights*(2*Math.pow(sumweights*mx1.Abs(),2)-sumweights*chi2CI)/
+						(4*sumweights-chi2CI))/
+						(sumweights*mx1.Abs()));
 					var mxanglelower = new Angle(mx1.Arg() - lim, nPixels, dx);
 					var mxangleupper = new Angle(mx1.Arg() + lim, nPixels, dx);
 
@@ -866,17 +866,17 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						pewseyskew += borderpixels[j] * 
 							Math.sin(2*ComplexDist(j*radstep, mxangle.rad));
 					}
-					pewseyskew /= denom;
+					pewseyskew /= sumweights;
 					
 					// Cicular skewness - see Statistical analysis of circular data, Fisher, p. 34
 					var mxskew = mx2.real * Math.sin(ComplexDist(mx2.imag, 2*mx1.Arg())) 
 						/ Math.pow((1 - mx1.Abs()), 1.5);						
 
 					// Rayleigh test, Zar 2010 eq. 27.4
-					//var radicand = 1 + 4*(denom + Math.pow(denom,2) - Math.pow(mx1.Abs(),2));
+					//var radicand = 1 + 4*(sumweights + Math.pow(sumweights,2) - Math.pow(mx1.Abs(),2));
 					//var rayleighprob = 1;
 					//if (radicand >= 0)
-					//	rayleighprob = Math.exp(Math.sqrt(radicand)	- (1 + 2*denom));
+					//	rayleighprob = Math.exp(Math.sqrt(radicand)	- (1 + 2*sumweights));
 
 					// Hodges-Ajne test, Zar 2010, eq. 27.8
 					var m = nPixels;
@@ -892,7 +892,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						if (temp < m)
 							m = temp;
 					}
-					var hodgesA = Math.PI *  Math.sqrt(denom) / (2 * (denom - 2*m));
+					var hodgesA = Math.PI *  Math.sqrt(sumweights) / (2 * (sumweights - 2*m));
 					var hodgesprob = Math.sqrt(2*Math.PI) / hodgesA * 
 						Math.exp(-Math.pow(Math.PI, 2) / (8 * Math.pow(hodgesA, 2)));
 						
