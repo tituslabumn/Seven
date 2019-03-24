@@ -604,19 +604,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				ip_filos.draw(scanroi); 
 			} 
 		} 
-		for (var i=0; i<nCells; i++) { 
-			var mydata = "";
-			if (fp_per_cell[i] > 0 && fp_per_cell[i] >= minfp) { 
-				for (var j = 0; j< fp; j++) {
-				if (cell_per_fp[j] == i) {
-				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"
-					+pTips.ypoints[j]+"\t"+IJ.d2s(Math.sqrt(cell_area_body[i]/Math.PI),2)+newline; 
-			//	tipdata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
-				}
-			}
-			var tipfile = anadir+"sample-angle-result-per-cell-"+i+"-"+anaversion+".txt";
-			saveText(tipfile, mydata, false);  
-		}
 	} 
 	//var Overalltipfile = root+sep+"Overall-angle-result"+"-"+anaversion+".txt"; 
 	// var text = IJ.getLog(); 
@@ -699,7 +686,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						band = IJ.getImage(); 
 		 				
 		 				// Set intensity threshold
-						var bandnoise = 60000; // the filos are above threshold
+						var bandnoise = 1000; // the filos are above threshold
 					} else {
 						// Apply ROI to image to outline the banded region
 						img1.setRoi(linepoints); 
