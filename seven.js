@@ -764,16 +764,26 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var bandprofile = new Packages.ij.gui.ProfilePlot(band);
 					var borderpixels = bandprofile.getProfile(); 
 					var nPixels = borderpixels.length;
+					var gfpval = 200; // ? standardize intensity weights - need to determine suitable value
 					var borderweights = new Array(nPixels); 
 					// initialize to 0 - probably redundant?
 					for (var j = 0; j<nPixels; j++) { 
 						borderweights[j] = 0; 
 					} 
-					if (bandpoints != null && bandpoints.getPolygon() != null) { 
-						for (var j = 0; j<bandx.length; j++)
-							if (bandx[j] < nPixels)
-								borderweights[bandx[j]] = 1;
-					}					
+
+					if (draw_filos) { // use binary weights
+						if (bandpoints != null && bandpoints.getPolygon() != null) { 
+							for (var j = 0; j<bandx.length; j++) {
+								if (bandx[j] < nPixels)
+									borderweights[bandx[j]] = 1;
+							}
+						}			
+					} else { // use intensity weights
+						for (var j = 0; j<nPixels; j++) { 
+							// normalize intensity weights
+							borderweights[j] = borderpixels[j] / gfpval;
+						}
+					}
 					
 					// background subtraction
 					for (var j = 0; j<nPixels; j++) {
@@ -808,22 +818,20 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var sumweights = 0;
 					var mx1 = new Complex(0, 0);
 					var mx2 = new Complex(0, 0);
-					var gfpval = 200; // ??? need to determine 
 					var kappa = 4; // width parameter of von Mises distribution = 1/dispersion
 					var bessel = 11.30192; // besseli(4,0) - 95% density from -1.08 to +1.08 rad = 124 deg
 					var radstep = 2*Math.PI/nPixels;
+					
 					for (var j = 0; j<nPixels; j++) {
 						var cj = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
 						var cj2 = cj.RealPow(2);
 						
 						// Simulate von Mises distribution
-						//borderpixels[j] = Math.exp(kappa * Math.cos(j*radstep)) / (2*Math.PI*bessel);
+						//borderweights[j] = Math.exp(kappa * Math.cos(j*radstep)) / (2*Math.PI*bessel);
 						
-						// normalize intensity weights
-						borderpixels[j] /= gfpval;
-						mx1 = mx1.Add(cj.Scale(borderpixels[j]));
-						mx2 = mx2.Add(cj2.Scale(borderpixels[j]));
-						sumweights += borderpixels[j];
+						mx1 = mx1.Add(cj.Scale(borderweights[j]));
+						mx2 = mx2.Add(cj2.Scale(borderweights[j]));
+						sumweights += borderweights[j];
 					}
 					mx1 = mx1.Scale(1/sumweights); // first moment vector
 					mx2 = mx2.Scale(1/sumweights); // second moment vector
