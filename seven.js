@@ -609,7 +609,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			if (fp_per_cell[i] > 0 && fp_per_cell[i] >= minfp) { 
 				for (var j = 0; j< fp; j++) {
 				if (cell_per_fp[j] == i) {
-				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+"\t"+IJ.d2s(Math.sqrt(area_body[i]/Math.PI),2)+newline; 
+				mydata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"
+					+pTips.ypoints[j]+"\t"+IJ.d2s(Math.sqrt(cell_area_body[i]/Math.PI),2)+newline; 
 			//	tipdata += pCells.xpoints[i]+"\t"+pCells.ypoints[i]+"\t"+pTips.xpoints[j]+"\t"+pTips.ypoints[j]+newline;
 				}
 			}
@@ -658,7 +659,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				// begin reporting 
 				celltab.incrementCounter(); 
 				celltab.addValue("Cell Intensity", cell_body[i]); 
-				celltab.addValue("Cell Area (um^2)", area_body[i]); 
+				celltab.addValue("Cell Area (um^2)", cell_area_body[i]); 
 			    //if (fp_per_cell[i] > 0) { // optionally only look at cells with fp 
 				spacingtab.incrementCounter(); 
 				 
@@ -666,7 +667,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				img1.setRoi(rois[i]); 
 				rs.select(img1, i); 
  
-				if (area_body[i] > minarea) { 
+				if (cell_area_body[i] > minarea) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
 					var rawpoints = img1.getRoi(); 
@@ -768,7 +769,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					// Analyze banded image intensity 
 					IJ.run(band, "Select All", ""); 
 					var bs = band.getStatistics(MEASUREMENTS); 
-					area_band[i] = bs.area; 
+					cell_area_band[i] = bs.area; 
 					//cell_band[i] = bs.mean-bgval; // calculated below from peak cortex intensity
 					ScanLine(img1, anadir, "spacing", dx, i); 
 
@@ -921,7 +922,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					
 			    	// Report band intensity 
 					celltab.addValue("Cortex Intensity", cell_band[i]); 
-					//celltab.addValue("Band Area (um^2)", area_band[i]); 
+					//celltab.addValue("Band Area (um^2)", cell_area_band[i]); 
 					celltab.addValue("Band Variance", Math.pow(bs.stdDev, 2));
 					celltab.addValue("Band Skewness", bs.skewness);
 					celltab.addValue("Band Kurtosis", bs.kurtosis);
@@ -932,7 +933,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					if (!DEBUG) { band.close(); } 
 				} 
 			} 
-			//standardize(cell_band, cell_body, area_band, area_body);  
+			//standardize(cell_band, cell_body, cell_area_band, cell_area_body);  
 		} 
 		
 		// Clean up from first pass 
@@ -1137,7 +1138,7 @@ function seven_run(imagefile, frame, anadir, imagetab) {
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
 	 
 		// analyze cell body intensity 
-		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, area_body); 
+		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, cell_area_body); 
 		AnalyzeScans(img0.duplicate(), imagefile, anadir, boxwidth_um); 
 	 
 		// Analyze tips (second pass) 
