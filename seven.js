@@ -765,14 +765,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var borderpixels = bandprofile.getProfile(); 
 					var nPixels = borderpixels.length;
 					var borderweights = new Array(nPixels); 
+					// initialize to 0 - probably redundant?
 					for (var j = 0; j<nPixels; j++) { 
 						borderweights[j] = 0; 
 					} 
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
 						for (var j = 0; j<bandx.length; j++)
-							borderweights[bandx[j]] = 1;
-					}
-					
+							if (bandx[j] < nPixels)
+								borderweights[bandx[j]] = 1;
+					}					
 					
 					// background subtraction
 					for (var j = 0; j<nPixels; j++) {
