@@ -190,7 +190,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 						saveImage(mask, maskformat, anadir, subname+"/Capture-mask", parseInt(anaversion)); 
  
 						// Apply the mask to the image (not required, but useful for visual inspection) 
-						ic = new  Packages.ij.plugin.ImageCalculator(); 
+						ic = new Packages.ij.plugin.ImageCalculator(); 
 						img2 = ic.run("Min stack create", mask, img); 
 						if (img2.getNSlices() >= frame)
 							img2.setSlice(frame);
@@ -1286,8 +1286,8 @@ function Filopod(x, y, cell_x, cell_y, intensity) {
 
 	// consistency check to verify colinearity
 	this.colinear = function() {
-		var epsilon = 0.01;
-		var ratio = ((cross_y-y)*(cell_x-x)) / ((cell_y-y)*(cross_x-x));
+		var epsilon = 0.1;
+		var ratio = ((this.cross_y-y)*(this.cell_x-x)) / ((this.cell_y-y)*(this.cross_x-x));
 		
 		if (Math.abs(ratio-1) < epsilon)
 			return true;
@@ -1298,7 +1298,7 @@ function Filopod(x, y, cell_x, cell_y, intensity) {
 }
 
 function colinear(x0, y0, x1, y1, x2, y2) {
-	var epsilon = 0.01;
+	var epsilon = 0.1;
 	var ratio = ((y2-y0)*(x1-x0)) / ((y1-y0)*(x2-x0));
 	
 	if (Math.abs(ratio-1) < epsilon)
