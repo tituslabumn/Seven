@@ -121,7 +121,11 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 						// Process image 
 						var mask = IJ.openImage(imagefile); 
+ 						if (mask.getNSlices() >= frame)
+ 							mask.setSlice(frame); 
 						var img = mask.duplicate(); 
+ 						if (img.getNSlices() >= frame)
+ 							img.setSlice(frame); 
 						// Read the pixel size, converting cm->um 
 					    var cal = mask.getCalibration(); 
 					    cm2um(cal); 
@@ -203,7 +207,9 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 // Analyze cells using the mask to calculate ROIs, cell area and mean intensity 
 function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_xs, cell_ys) { 
-	var img3 = img1.duplicate(); 
+	var img3 = img1.duplicate();  		
+	if (img3.getNSlices() >= frame)
+ 		img3.setSlice(frame);
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
 	// set image scale cm->um 
@@ -340,6 +346,8 @@ function AnalyzeScans(img1, imagefile, anadir, boxwidth_um) {
 	    var masked = new File(anadir+sep+"Capture-mask-body"+anaversion+"-0."+format); 
 	    if (masked.isFile()) { 
 	    	var img2 = IJ.openImage(masked); 
+ 			if (img2.getNSlices() >= frame)
+ 				img2.setSlice(frame); 
 		    var rois = rs.getRoisAsArray(); 
 		    for (var i = 0; i < rois.length; i++) { 
 				rois[i].setStrokeWidth(1); 
@@ -593,6 +601,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	 
 		// Generate intermediate image for filo spacing - line color is white for thresholding
 		var img_filos = img1.duplicate();
+ 		if (img_filos.getNSlices() >= frame)
+ 			img_filos.setSlice(frame);
 		img_filos.setColor(Color.WHITE); 
 		var ip_filos = img_filos.getProcessor(); 
 		
@@ -1158,7 +1168,7 @@ function seven_multi(root, acqname) {
  
 function seven_scans(imagefile, anadir) { 
 	ClearLog(); 
- 	var img = IJ.openImage(img); 
+ 	var img = IJ.openImage(img);
  
 	AnalyzeScans(img, imagefile, anadir, boxwidth_um); 
 } 
@@ -1171,6 +1181,8 @@ function seven_run(imagefile, anadir, imagetab) {
 		 
 		// Name the image img0 because it will be duplicated for each function call 
 		var img0 = IJ.openImage(imagefile);
+ 		if (img0.getNSlices() >= frame)
+ 			img0.setSlice(frame);  
 	 
 		// Analyze tips (first pass) 
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
@@ -1440,6 +1452,8 @@ function openIf(file, format) {
 		image = opener.openZip(file); 
 	} else { 
 		image = opener.openImage(file); 
+ 		if (image.getNSlices() >= frame)
+ 			image.setSlice(frame); 
 	} 
 	return image 
 } 
@@ -1643,6 +1657,8 @@ function kymograph(img0, rs, dt, boxwidth_um, paramtab, resultsdir) {
  
 	for (var j=0; j < rois.length; j++) { 
 		var img = img0.duplicate(); 
+		if (img.getNSlices() >= frame)
+ 			img.setSlice(frame);
  
 		img.show(); 
 		img.setRoi(rois[j]); 
