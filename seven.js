@@ -741,7 +741,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var bandpoints = band.getRoi(); 
 					var bandx = new Array();
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
-		 
 						bandx = bandpoints.getPolygon().xpoints; 
 						var radstep = 2*Math.PI/band.width; // parametric distance of one pixel in radians
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
@@ -805,7 +804,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var bs = band.getStatistics(MEASUREMENTS); 
 					cell_area_band[i] = bs.area; 
 					//cell_band[i] = bs.mean-bgval; // calculated below from peak cortex intensity
-					ScanLine(img1, anadir, "spacing", dx, i); 
+					ScanLine(band, anadir, "spacing", dx, i); 
 
 					var bandprofile = new Packages.ij.gui.ProfilePlot(band);
 					var borderpixels = bandprofile.getProfile(); 
