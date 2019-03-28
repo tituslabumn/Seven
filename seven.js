@@ -732,8 +732,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						bandx = bandpoints.getPolygon().xpoints; 
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, band.width, dx, true);	
-						var leftneighborx = neighbor(bandx, band.width, dx, false);	
+						var neighborx = neighbor(bandx, dx, true);	
+						var leftneighborx = neighbor(bandx, dx, false);	
 						var neighbormeanx = 0; 
 						for (var j = 0;j<neighborx.length; j++) { 
 							neighbormeanx += neighborx[j]; 
@@ -1474,10 +1474,17 @@ function noiseThreshold(stats, minSNR) {
 	return noise; 
 } 
  
-function neighbor(vararray, maxdist, dx, smallest_distance) { 
+function neighbor(vararray, dx, minimize) { 
 	// this function copies an array of x values, ensures they are sorted and then
 	// returns an array with the nearest neighbor distance (delta x) for each position
-	// assuming a circular x coordinate
+	// assuming a circular x coordinate.
+	//
+	// Input values
+	// vararray : a Java array
+	// dx		: width of a pixel in um
+	// minimize	: true = return smallest distance, false = return left hand distance
+	//
+	// Output value is a distance in um
 	
 	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
@@ -1504,19 +1511,23 @@ function neighbor(vararray, maxdist, dx, smallest_distance) {
 	 
 		// calculate immediate neighbors absolute distance 
 		var circ = 0; // implement circularity 
+		var pixels = 0; // distance in pixels
 		circ = (sorted[i] > left[i]) ? maxdist : 0; 
 		dleft = (left[i] - sorted[i] + circ) * dx; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
 		dright = (sorted[i] - right[i] + circ) * dx; 
-		if (smallest_distance)
- 			jsarray[i] = (dleft < dright) ? dleft : dright; 
+		if (minimize)
+ 			pixels = (dleft < dright) ? dleft : dright; 
  		else
-			jsarray[i] = dleft;
+			pixels = dleft;
  
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
 			IJ.showMessage("Neighbor distance failed, must be positive"); 
 		} 
+
+		// convert result to um and copy to array
+		jsarray[i] = pixels*dx;
 	} 
 	return jsarray; 
 } 
@@ -1904,6 +1915,11 @@ function smooth(intensities, smoothwidth) {
 
 function Angle(rad, steps, dx) {
 	// This object reports angular values in radians or degrees and pathlength values in pixels or um
+	//
+	// rad: 	angle in radians
+	// steps:	total perimeter distance in pixels
+	//	dx:		width of a pixel in um
+	
 	this.rad = (rad < 0) ? rad+2*Math.PI : rad; // shift to range [0..2PI]rad;
 	this.deg = this.rad * 180/Math.PI;
 	this.pixel = Math.floor(this.rad * steps/(2*Math.PI));
