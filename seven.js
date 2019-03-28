@@ -174,10 +174,15 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 						//Return to the original image and normalize 
 						IJ.run(img, "Enhance Contrast", "saturated=0.35"); 
- 
+
 						// Let the user manually correct the mask file 
 						img.show(); 
+						if (img.getNSlices() >= frame) // reset image position due to potential side effects
+							img.setSlice(frame);
 						mask.show(); 
+						if (mask.getNSlices() >= frame) // reset image position due to potential side effects
+							mask.setSlice(frame);
+
 						if (semi) { 
 							new Packages.ij.gui.WaitForUserDialog( 
 								"Manual Corrections", "Please press OK when done.").show(); 
@@ -187,6 +192,9 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 						// Apply the mask to the image (not required, but useful for visual inspection) 
 						ic = new  Packages.ij.plugin.ImageCalculator(); 
 						img2 = ic.run("Min stack create", mask, img); 
+						if (img2.getNSlices() >= frame)
+							img2.setSlice(frame);
+
 						invertImage(img2); 
 						saveImage(img2, format, anadir, subname+"/Capture-threshold", parseInt(anaversion)); 
  
@@ -208,9 +216,13 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
  
 // Analyze cells using the mask to calculate ROIs, cell area and mean intensity 
 function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_xs, cell_ys) { 
+	if (img1.getNSlices() >= frame)
+		img1.setSlice(frame);
+
 	var img3 = img1.duplicate();  		
 	if (img3.getNSlices() >= frame)
  		img3.setSlice(frame);
+
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
 	// set image scale cm->um 
@@ -246,6 +258,8 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_
     invertImage(img1); 
     var ic = new Packages.ij.plugin.ImageCalculator(); 
     var img2 = ic.run("Max create stack", img1, mask); 
+	if (img2.getNSlices() >= frame)
+		img2.setSlice(frame);
  
     // invert image 
     invertImage(img2); 
@@ -302,6 +316,9 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_
  
 // Analysis of filopod line scans 
 function AnalyzeScans(img1, imagefile, anadir, boxwidth_um) { 
+	if (img1.getNSlices() >= frame)
+		img1.setSlice(frame);
+
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
 	// set image scale cm->um 
@@ -389,8 +406,10 @@ function ScanLine(img, dir, name, pixelwidth, index) {
  
 // Analysis for counting filopodia tips and registering to cells 
 function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) { 
-	// get raw image stats
-	
+	if (img1.getNSlices() >= frame)
+		img1.setSlice(frame);
+
+	// get raw image stats	
 	var stats = img1.getStatistics(MEASUREMENTS); 
 	var bgval = stats.dmode; // use instead of minval - this is black level of whole image
 	var minSNR = 3; 
@@ -418,6 +437,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	var ic = new Packages.ij.plugin.ImageCalculator(); 
 	IJ.run(img1, "Subtract...", "value=1 stack"); // subtract 1 from raw image to avoid white pixels 
 	var img2 = ic.run("Max create stack", img1, mask); 
+	if (img2.getNSlices() >= frame)
+		img2.setSlice(frame);
+
 	var ip2 = img2.getProcessor(); 
 	// Save an intermediate image with cells masked in white; this gets used in "linescanonly" mode 
 	saveImage(img2, format, anadir, "Capture-mask-body"+anaversion, 0); 
@@ -456,10 +478,12 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 	if (pCells.npoints > 0) { // only write if populated 
 		var rCells = new Packages.ij.gui.PointRoi(pCells); 
+		rCells.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 		StoreRoi(img2, rCells, "Cells", rois); 
 	} 
 	if (pRawTips.npoints > 0) { // only write if populated 
 		var rRawTips = new Packages.ij.gui.PointRoi(pRawTips); 
+		rRawTips.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 		StoreRoi(img2, rRawTips, "RawTips", rois); 
 	} 
  
@@ -503,9 +527,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		for (var a=0; a<nRawTips; a++) { 
 			if (tipx[a] >= radius_scan && tipx[a] < (w-radius_scan) && 
 				tipy[a] >= radius_scan && tipy[a] < (h-radius_scan)) {
-				img2.setRoi(new Packages.ij.gui.Line( 
-					tipx[a], tipy[a], parseInt(tipx[a]+radius_scan), tipy[a])); 
-	 
+				var radius_scanroi = new Packages.ij.gui.Line( 
+					tipx[a], tipy[a], parseInt(tipx[a]+radius_scan), tipy[a]); 
+				radius_scanroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
+				img2.setRoi(radius_scanroi);
 				var thetastep = 3; 
 				var nSteps = Math.ceil(360/thetastep); 
 				img2.hide(); 
@@ -542,6 +567,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 		if (pTips.npoints > 0) { // only write if populated 
 			var rTips = new Packages.ij.gui.PointRoi(pTips); 
+			rTips.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 			StoreRoi(img2, rTips, "Tips", rois); 
 		} 
 	 
@@ -576,11 +602,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			} 
 			if (reg >= 0) { 
 				// Select the line connecting tip to cell center-of-area 
-				img2.setRoi( 
-					new Packages.ij.gui.Line(pTips.xpoints[u],pTips.ypoints[u], 
-						pCells.xpoints[reg],pCells.ypoints[reg]) 
-				); 
-	 
+				var tiproi = new Packages.ij.gui.Line(pTips.xpoints[u],pTips.ypoints[u], 
+						pCells.xpoints[reg],pCells.ypoints[reg]); 
+				tiproi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
+				img2.setRoi(tiproi); 
+
 				// Update the count of registered filopodia
 				fp_per_cell[reg]++; 
 				// update global data array for intensity using the unmasked img1 
@@ -620,6 +646,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						pCells.xpoints[index],pCells.ypoints[index]); 
 				//var angle = scanroi.getAngle();
 				//IJ.log("Angle value = "+ angle);
+				scanroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze
 				scanroi.setStrokeWidth(1); 
 				img2.setRoi(scanroi); 
 				img_filos.setRoi(scanroi);
@@ -701,13 +728,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						rawpoints.getPolygon().ypoints[0]); 
 					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
 						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
-						rawpoints.getPolygon().ypoints[0]+1); 
+						rawpoints.getPolygon().ypoints[0]+1);
+					startroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 					img2.setRoi(startroi); 
 					// Draw a 1px line on the masked img2 
 					ip2.draw(startroi); 
 						
 					var linepoints = new Packages.ij.gui.PolygonRoi(outline,  
 						Packages.ij.gui.Roi.FREELINE); 
+					linepoints.setPosition(1, frame, 1); // specify which frame (slice) to analyze
 
 					var draw_filos = true;
 					if (draw_filos) {
@@ -1174,7 +1203,9 @@ function seven_multi(root, acqname) {
 function seven_scans(imagefile, anadir) { 
 	ClearLog(); 
  	var img = IJ.openImage(img);
- 
+	if (img.getNSlices() >= frame)
+		img.setSlice(frame); 
+		
 	AnalyzeScans(img, imagefile, anadir, boxwidth_um); 
 } 
  
@@ -1187,7 +1218,7 @@ function seven_run(imagefile, anadir, imagetab) {
 		// Name the image img0 because it will be duplicated for each function call 
 		var img0 = IJ.openImage(imagefile);
  		if (img0.getNSlices() >= frame)
- 			img0.setSlice(frame);  
+ 			img0.setSlice(frame);
 	 
 		// Analyze tips (first pass) 
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
@@ -1457,10 +1488,10 @@ function openIf(file, format) {
 		image = opener.openZip(file); 
 	} else { 
 		image = opener.openImage(file); 
- 		if (image.getNSlices() >= frame)
- 			image.setSlice(frame); 
 	} 
-	return image 
+	if (image != null && image.getNSlices() >= frame)
+		image.setSlice(frame); 
+	return image;
 } 
  
 function saveIf(img, format, path) { 
