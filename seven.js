@@ -637,11 +637,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		spacingtab.setPrecision(digits); 
 		 
 	    // Spacing analysis of cell perimeter band 
+	    // Load ROIs for cells 
 	    var rs = new RoiSet(); 
 	    var roifile = new File(anadir+"cell-body-RoiSet"+anaversion+".zip"); 
 	    if (!roifile.exists()) { 
 	    	roifile = new File(anadir+"cell-body-RoiSet"+anaversion+"+.roi"); 
 	    } 
+
+	    // begin perimeter band analysis
 	    if (banded && roifile.exists()) { 
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
@@ -668,7 +671,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						outline.addPoint(rawpoints.getPolygon().xpoints[j],  
 							rawpoints.getPolygon().ypoints[j]); 
 					} 
-					// Correct "C" to "O" shape 
+					// By default the band ROI has "C" shape. Now correct this to an "O" shape:
 					outline.addPoint(rawpoints.getPolygon().xpoints[0],  
 						rawpoints.getPolygon().ypoints[0]); 
 					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
@@ -717,7 +720,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						bandx = bandpoints.getPolygon().xpoints; 
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, band.width, dx);	 
+						var neighborx = neighbor(bandx, band.width, dx, true);	
+						var leftneighborx = neighbor(bandx, band.width, dx, false);	
 						var neighbormeanx = 0; 
 						for (var j = 0;j<neighborx.length; j++) { 
 							neighbormeanx += neighborx[j]; 
@@ -1458,7 +1462,7 @@ function noiseThreshold(stats, minSNR) {
 	return noise; 
 } 
  
-function neighbor(vararray, maxdist, dx) { 
+function neighbor(vararray, maxdist, dx, smallest_distance) { 
 	// this function copies an array of x values, ensures they are sorted and then
 	// returns an array with the nearest neighbor distance (delta x) for each position
 	// assuming a circular x coordinate
@@ -1492,7 +1496,10 @@ function neighbor(vararray, maxdist, dx) {
 		dleft = (left[i] - sorted[i] + circ) * dx; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
 		dright = (sorted[i] - right[i] + circ) * dx; 
-		jsarray[i] = (dleft < dright) ? dleft : dright; 
+		if (smallest_distance)
+ 			jsarray[i] = (dleft < dright) ? dleft : dright; 
+ 		else
+			jsarray[i] = dleft;
  
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
@@ -1884,6 +1891,7 @@ function smooth(intensities, smoothwidth) {
 }
 
 function Angle(rad, steps, dx) {
+	// This object reports angular values in radians or degrees and pathlength values in pixels or um
 	this.rad = (rad < 0) ? rad+2*Math.PI : rad; // shift to range [0..2PI]rad;
 	this.deg = this.rad * 180/Math.PI;
 	this.pixel = Math.floor(this.rad * steps/(2*Math.PI));
