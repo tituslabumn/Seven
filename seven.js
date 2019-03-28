@@ -621,7 +621,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				ip_filos.draw(scanroi); 
 			} 
 		} 
-	} 
+ 
 	//var Overalltipfile = root+sep+"Overall-angle-result"+"-"+anaversion+".txt"; 
 	// var text = IJ.getLog(); 
 
@@ -1058,9 +1058,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			    } 
 			}
  
-		// Save the results table as a delimited text file 
-		celltab.save(anadir+"analysis-results-"+anaversion+"."+resultsformat); 
-		filotab.save(anadir+"filopod-results-"+anaversion+"."+resultsformat); 
+			// Save the results table as a delimited text file 
+			celltab.save(anadir+"analysis-results-"+anaversion+"."+resultsformat); 
+			filotab.save(anadir+"filopod-results-"+anaversion+"."+resultsformat); 
 		} 
  
 		// Save marked img2 
