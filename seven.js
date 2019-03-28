@@ -640,7 +640,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			if (cell_per_fp[u] >= 0) {
 				fparray[v] = new Filopod(xpos_per_fp[u], ypos_per_fp[u], 
 					pCells.xpoints[cell_per_fp[u]], pCells.ypoints[cell_per_fp[u]],
-					intensity_per_fp[u]);
+					0, intensity_per_fp[u]);
 				v++;
 			}
 		}
@@ -1251,13 +1251,14 @@ function seven_run(imagefile, anadir, imagetab) {
 	}
 } 
 
-function Filopod(x, y, cell_x, cell_y, intensity) {
+function Filopod(x, y, cell_x, cell_y, cell_perimeter, intensity) {
 	// object to store filopod data 
 	// default values assigned at initialization
 	this.x = x;
 	this.y = y;
 	this.cell_x = cell_x;
 	this.cell_y = cell_y;
+	this.cell_perimeter = cell_perimeter;
 	this.intensity = intensity;
 	if (x<0 || y<0 || cell_x<0 || cell_y<0)
 		IJ.error("Seven.js", "invalid Filopod() initialized with negative coordinate values");
@@ -1269,12 +1270,6 @@ function Filopod(x, y, cell_x, cell_y, intensity) {
 	this.cross_rad = NaN;
 	this.neighbor_near_u = -1;
 	this.neighbor_left_u = -1;
-	this.neighbor_near_rad = NaN;
-	this.neighbor_left_rad = NaN;
-
-	// calculate parametric angles in degrees
-	this.neighbor_near_deg = this.neighbor_near_rad * 180 / Math.PI;
-	this.neighbor_left_deg = this.neighbor_left_rad * 180 / Math.PI;
 
 	// calculate filopod length/extension distance
 	// (cannot call it length because length is a reserved word)
@@ -1284,6 +1279,29 @@ function Filopod(x, y, cell_x, cell_y, intensity) {
 		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
 	}
 
+	// calculate parametric angles in radians
+	this.neighbor_near_rad = function () {
+		if (this.neighbor_near_u >= 0)
+			return this.neighbor_near_u/this.cell_perimeter*2*Math.PI;
+		else
+			return NaN;
+	}
+	
+	this.neighbor_left_rad = function () {
+		if (this.neighbor_left_u >= 0)
+			return this.neighbor_left_u/this.cell_perimeter*2*Math.PI;
+		else
+			return NaN;
+	}
+	
+	// calculate parametric angles in degrees (evaluate at call time)
+	this.neighbor_near_deg = function () {
+		return this.neighbor_near_rad * 180 / Math.PI;
+	}
+	this.neighbor_left_deg = function () {
+		return this.neighbor_left_rad * 180 / Math.PI;
+	}
+	
 	// consistency check to verify colinearity
 	this.colinear = function() {
 		var epsilon = 0.1;
