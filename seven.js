@@ -1188,7 +1188,42 @@ function seven_run(imagefile, frame, anadir, imagetab) {
 		if (!DEBUG) { img0.close(); } 
 	}
 } 
- 
+
+function Filopod(x, y, cell_x, cell_y, intensity) {
+	// object to store filopod data 
+	// default values assigned at initialization
+	this.x = x;
+	this.y = y;
+	this.cell_x = cell_x;
+	this.cell_y = cell_y;
+	this.intensity = intensity;
+	if (x<0 || y<0 || cell_x<0 || cell_y<0)
+		IJ.error("Seven.js", "invalid Filopod() initialized with negative coordinate values");
+
+	// default values for properties with true values assigned later
+	this.cross_x = -1;
+	this.cross_y = -1;
+	this.cross_u = -1;
+	this.cross_rad = NaN;
+	this.neighbor_near_u = -1;
+	this.neighbor_left_u = -1;
+	this.neighbor_near_rad = NaN;
+	this.neighbor_left_rad = NaN;
+
+	// calculate parametric angles in degrees
+	this.neighbor_near_deg = this.neighbor_near_rad * 180 / Math.PI;
+	this.neighbor_left_deg = this.neighbor_left_rad * 180 / Math.PI;
+
+	// calculate filopod length/extension distance
+	// (cannot call it length because length is a reserved word)
+	this.extension = function () {
+		var disp_x = x - cross_x;
+		var disp_y = y - cross_y;
+		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
+	}
+
+}
+
 function ClearLog() { 
 	if (IJ.getLog() != null) { 
 		IJ.selectWindow("Log"); 
