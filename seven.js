@@ -586,7 +586,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		intensity_per_fp = new Array(fp);   // reassign dimensions of this global array
 		xpos_per_fp = new Array(fp);     	// reassign dimensions of this global array
 		ypos_per_fp = new Array(fp);    	// reassign dimensions of this global array
-	 	 
+		
 		for (var u=0; u<fp; u++) { 
 			var score = 1e6; 
 			var reg = -1; 
@@ -632,6 +632,20 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
  			img_filos.setSlice(frame);
 		img_filos.setColor(Color.WHITE); 
 		var ip_filos = img_filos.getProcessor(); 
+			 
+		// local array for filopodia
+	 	var fparray = new Array(regfp);
+	 	var v = 0;
+		for (var u = 0; u < fp; u++) {
+			if (cell_per_fp[u] >= 0) {
+				fparray[v] = new Filopod(xpos_per_fp[u], ypos_per_fp[u], 
+					pCells.xpoints[cell_per_fp[u]], pCells.ypoints[cell_per_fp[u]],
+					intensity_per_fp[u]);
+				v++;
+			}
+		}
+		if (v != regfp)
+			IJ.error("Seven.js", "Failed to initialize Filopod array");
 		
 	    // need to set line color here for contrast with white mask in img2
 		img2.setColor(Color.GRAY); 
