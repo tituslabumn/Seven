@@ -537,15 +537,20 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 	 
 		// Register FP to cells 
-		var fp_per_cell = new Array(nCells); 
-		var cell_per_fp = new Array(fp); 
-		for (var q=0; q<nCells; q++) { 
-			fp_per_cell[q] = 0; 
-		} 
 		var maxdistance_um = 20; // maximum distance from cell center in microns 
 		var maxpixeldist = maxdistance_um/dx;  
 		var regfp = fp; 
 		var cells_with_fp = nCells; 
+		var fp_per_cell = new Array(nCells); // create local array for bookkeeping
+		// initialize to zero - probably not necessary?
+		for (var q=0; q<nCells; q++)
+			fp_per_cell[q] = 0; 
+
+		// assign global array dimensions - probably not necessary (JavaScript very forgiving)
+		cell_per_fp = new Array(fp);     	// reassign dimensions of this global array
+		intensity_per_fp = new Array(fp);   // reassign dimensions of this global array
+		xpos_per_fp = new Array(fp);     	// reassign dimensions of this global array
+		ypos_per_fp = new Array(fp);    	// reassign dimensions of this global array
 	 	 
 		for (var u=0; u<fp; u++) { 
 			var score = 1e6; 
@@ -567,14 +572,21 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						pCells.xpoints[reg],pCells.ypoints[reg]) 
 				); 
 	 
-				// Update the count & intensity vector using the unmasked img1 
+				// Update the count of registered filopodia
 				fp_per_cell[reg]++; 
+				// update global data array for intensity using the unmasked img1 
 				intensity_per_fp[u] = getValue(img1, pTips.xpoints[u], pTips.ypoints[u]) 
 					- bgval; // background-corrected peak intensity at tip 
-				cell_per_fp[u] = reg; 
+				// update global data arrays for cell registration and xy position 
+				cell_per_fp[u] = reg;
+				xpos_per_fp[u] = pTips.xpoints[u];
+				ypos_per_fp[u] = pTips.ypoints[u];
 			} else { 
+				// the tip cannot be registered to a cell, i.e., it is a false positive detection event.
 				intensity_per_fp[u] = 0; 
 			    cell_per_fp[u] = -1; 
+				xpos_per_fp[u] = -1;
+				ypos_per_fp[u] = -1;
 				regfp--; 
 			} 
 		} 
