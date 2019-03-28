@@ -1145,7 +1145,7 @@ function seven_multi(root, acqname) {
 						if (linescanonly) { 
 							seven_scans(imagefile, anadir); 
 						} else { 
-							seven_run(imagefile, frame, anadir, imagetab); 
+							seven_run(imagefile, anadir, imagetab); 
 						} 
 					} 
 				} 
@@ -1163,14 +1163,14 @@ function seven_scans(imagefile, anadir) {
 	AnalyzeScans(img, imagefile, anadir, boxwidth_um); 
 } 
  
-function seven_run(imagefile, frame, anadir, imagetab) { 
+function seven_run(imagefile, anadir, imagetab) { 
 	if (imagefile.isFile()) {
 		ClearLog(); 
 		IJ.log(imagefile); 
 		imagetab.incrementCounter(); 
 		 
 		// Name the image img0 because it will be duplicated for each function call 
-		var img0 = IJ.openImage(imagefile, frame); 
+		var img0 = IJ.openImage(imagefile);
 	 
 		// Analyze tips (first pass) 
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
