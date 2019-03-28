@@ -1307,6 +1307,34 @@ function colinear(x0, y0, x1, y1, x2, y2) {
 		return false;
 }
 
+function lookup(cumulative, input) {
+	var output = null;
+
+	for (var i = 0; i < cumulative.length; i++)
+		if (output == null && cumulative[i] >= input)
+			output = i;
+			
+	return output;
+}
+
+function outliner(polygon, npoints, frame) {				
+	var outline = new Polygon(); 
+	if (npoints > polygon.xpoints.length)
+		IJ.error("Seven.js", "Invalid argument to outliner(): npoints too large");
+	
+	for (var j = 0; j<npoints; j++)
+		outline.addPoint(polygon.xpoints[j], polygon.ypoints[j]);
+ 
+	// By default the band ROI has "C" shape. Now correct this to an "O" shape:
+	if (npoints == polygon.xpoints.length)
+		outline.addPoint(polygon.xpoints[0], polygon.ypoints[0]); 
+	var outline_roi = new Packages.ij.gui.PolygonRoi(outline,  
+		Packages.ij.gui.Roi.FREELINE); 
+	outline_roi.setPosition(1, frame, 1); // specify which frame (slice) to analyze
+
+	return outline_roi;
+} 
+
 function ClearLog() { 
 	if (IJ.getLog() != null) { 
 		IJ.selectWindow("Log"); 
