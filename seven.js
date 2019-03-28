@@ -202,7 +202,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 } 
  
 // Analyze cells using the mask to calculate ROIs, cell area and mean intensity 
-function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) { 
+function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_xs, cell_ys) { 
 	var img3 = img1.duplicate(); 
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
@@ -231,9 +231,9 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) {
         exit; 
     } 
     // get xy coordinates to identify cells with wand tool 
-    var rois = rs.getRoisAsArray(); 
-	var xs = rois[1].getPolygon().xpoints; 
-    var ys = rois[1].getPolygon().ypoints; 
+    var rois = rs.getRoisAsArray(); // returns Java array of ij.gui.Roi[]
+	var xs = rois[1].getPolygon().xpoints; // returns Java array of int[]
+    var ys = rois[1].getPolygon().ypoints; // returns Java array of int[]
  
     // invert image 
     invertImage(img1); 
@@ -270,9 +270,14 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) {
 		img3.setRoi(rois[i]); 
         rs.select(img3, i); 
         var cellstats = img3.getStatistics(MEASUREMENTS); 
+        // copy cell intensity and xy position to global data arrays
         intensities[i] = cellstats.mean - bgval; // mean background-corrected cell intensity
+        if (xs[i] > 0 && ys[i] > 0) {
+        	cell_xs[i] = xs[i];
+        	cell_ys[i] = ys[i];
+        }
  
-        // Measure cell area 
+        // Measure cell area and copy to global data array
         areas[i] = 0; 
         if (cellstats.area < fullarea) // Incorrectly drawn ROIs will cover the full frame 
 	        areas[i] = cellstats.area; 
@@ -1144,7 +1149,8 @@ function seven_run(imagefile, frame, anadir, imagetab) {
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
 	 
 		// analyze cell body intensity 
-		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, cell_area_body); 
+		// passing of global arrays by reference probably not necessary & somewhat confusing?
+		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, cell_area_body, cell_xpos, cell_ypos); 
 		AnalyzeScans(img0.duplicate(), imagefile, anadir, boxwidth_um); 
 	 
 		// Analyze tips (second pass) 
