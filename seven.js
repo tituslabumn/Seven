@@ -1222,6 +1222,27 @@ function Filopod(x, y, cell_x, cell_y, intensity) {
 		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
 	}
 
+	// consistency check to verify colinearity
+	this.colinear = function() {
+		var epsilon = 0.01;
+		var ratio = ((cross_y-y)*(cell_x-x)) / ((cell_y-y)*(cross_x-x));
+		
+		if (Math.abs(ratio-1) < epsilon)
+			return true;
+		else
+			return false;
+	}
+
+}
+
+function colinear(x0, y0, x1, y1, x2, y2) {
+	var epsilon = 0.01;
+	var ratio = ((y2-y0)*(x1-x0)) / ((y1-y0)*(x2-x0));
+	
+	if (Math.abs(ratio-1) < epsilon)
+		return true;
+	else
+		return false;
 }
 
 function ClearLog() { 
