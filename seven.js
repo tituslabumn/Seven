@@ -24,6 +24,7 @@ var LOCAL_AUTO = -1;
 var GLOBAL_AUTO = 0; 
 var digits = 6; // number of significant digits for logging
 var DEBUG = false; 
+var once = true;
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
 var minarea = 40; // minimum area = 1 sq um; prevents errors with very small ROIs 
@@ -745,8 +746,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						var radstep = 2*Math.PI/band.width; // parametric distance of one pixel in radians
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, dx, true);	
-						var leftneighborx = neighbor(bandx, dx, false);	
+						var neighborx = neighbor(bandx, band.width, dx, true);	
+						var leftneighborx = neighbor(bandx, band.width, dx, false);	
 						var neighbormeanx = 0; 
 						for (var j = 0;j<neighborx.length; j++) { 
 							crossingtab.incrementCounter(); 
@@ -1555,18 +1556,19 @@ function noiseThreshold(stats, minSNR) {
 	return noise; 
 } 
  
-function neighbor(vararray, dx, minimize) { 
+function neighbor(vararray, maxdist, dx, minimize) { 
 	// this function copies an array of x values, ensures they are sorted and then
 	// returns an array with the nearest neighbor distance (delta x) for each position
 	// assuming a circular x coordinate.
 	//
 	// Input values
 	// vararray : a Java array
+	// maxdist	: perimeter distance in pixels
 	// dx		: width of a pixel in um
 	// minimize	: true = return smallest distance, false = return left hand distance
 	//
 	// Output value is a distance in um
-	
+
 	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
 	for (var i = 0; i<jsarray.length; i++) { 
