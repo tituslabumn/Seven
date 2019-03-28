@@ -732,14 +732,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
 					var rawpoints = img1.getRoi(); 
-					var outline = new Polygon(); 
-					for (var j = 0; j<rawpoints.getPolygon().xpoints.length; j++) { 
-						outline.addPoint(rawpoints.getPolygon().xpoints[j],  
-							rawpoints.getPolygon().ypoints[j]); 
-					} 
-					// By default the band ROI has "C" shape. Now correct this to an "O" shape:
-					outline.addPoint(rawpoints.getPolygon().xpoints[0],  
-						rawpoints.getPolygon().ypoints[0]); 
+					var outline_points = rawpoints.getPolygon().xpoints.length;
+					var ladder = new Array(outline_points);
 					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
 						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
 						rawpoints.getPolygon().ypoints[0]+1);
@@ -747,35 +741,36 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					img2.setRoi(startroi); 
 					// Draw a 1px line on the masked img2 
 					ip2.draw(startroi); 
-						
-					var linepoints = new Packages.ij.gui.PolygonRoi(outline,  
-						Packages.ij.gui.Roi.FREELINE); 
-					linepoints.setPosition(1, frame, 1); // specify which frame (slice) to analyze
+					
+					var narrow = new Packages.ij.plugin.Straightener(); 
+					var outline_roi = outliner(rawpoints.getPolygon(), outline_points, frame);
+					var band = new ImagePlus();
+					for (var j = 0; j<outline_points; j++) {
+						if (j>1) {
+							var this_outline_roi = outliner(rawpoints.getPolygon(), j, frame);
+							img1.setRoi(this_outline_roi);
+							bandp = narrow.straighten(img1, this_outline_roi, 1);
+							ladder[j] = dx*bandp.width;
+						} else {
+							ladder[j] = 0;
+						}
+					}
+					once = false;
 
 					var draw_filos = true;
 					if (draw_filos) {
-						// Apply ROI to image to outline the banded region
-						img_filos.setRoi(linepoints); 
-						 
 						// Generate banded image from original 
-						IJ.run(img_filos, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
-						var extra = IJ.getImage();
-						IJ.run(IJ.getImage(), "Reslice [/]...", "output="+IJ.d2s(dx,0)+" avoid"); 
-						band = IJ.getImage(); 
-		 				
+						img_filos.setRoi(outline_roi);
+						bandp = narrow.straighten(img_filos, outline_roi, 1);
+						band = new ImagePlus("Perimeter band", bandp);
+						
 		 				// Set intensity threshold
 						var bandnoise = 1000; // the filos are above threshold
-						
-						// clean up from reslice procedure
-						extra.changes = false;
-						extra.close();
 					} else {
-						// Apply ROI to image to outline the banded region
-						img1.setRoi(linepoints); 
-						 
 						// Generate banded image from original 
-						IJ.run(img1, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
-						band = IJ.getImage(); 
+						img1.setRoi(outline_roi);
+						bandp = narrow.straighten(img1, outline_roi, boxheight);
+						band = new ImagePlus("Perimeter band", bandp);
 					
 		 				// Set intensity threshold
 						var bandnoise = noise; // defined above based on whole image 
@@ -796,19 +791,81 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						var neighborx = neighbor(bandx, band.width, dx, true);	
 						var leftneighborx = neighbor(bandx, band.width, dx, false);	
 						var neighbormeanx = 0; 
+						var cookies = 0;
+						var poison = 0;
+						var regcross = 0; // number of registered crossing points
+						var cellperimeter = band.width*dx; 
+						var meanx = cellperimeter/bandx.length; // perimeter divided by number of detection events
 						for (var j = 0;j<neighborx.length; j++) { 
 							crossingtab.incrementCounter(); 
-							var complex_pos = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
+							var complex_pos = new Complex(Math.cos(bandx[j]*radstep), Math.sin(bandx[j]*radstep));
 							// parametric crossing angle in range [-PI..PI] radians
 							var cross_angle = new Angle(complex_pos.Arg(), band.width, dx); 
+
+							//IJ.showMessage("deg = "+IJ.d2s(cross_angle.deg,3));
+							//IJ.showMessage("rad = "+IJ.d2s(cross_angle.rad,3));
+							//IJ.showMessage("dist = "+IJ.d2s(cross_angle.dist,3));
+							//IJ.showMessage("perimeter = "+IJ.d2s(cellperimeter,3));
+							// report data to table
 							crossingtab.addValue("Spacing (Delta um)", neighborx[j]);
 							crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
 							crossingtab.addValue("Crossing angle (deg)", cross_angle.deg);
+
+							// add data to filopod array
+							var outline_pixel = lookup(ladder, cross_angle.dist);
+							if (Math.abs((outline_pixel-0.5)*cellperimeter/
+								(rawpoints.getPolygon().npoints*cross_angle.dist)-1) > 0.1)
+						//		IJ.error("Seven.js", "Path lookup error exceeds tolerance");
+								poison++;
+							else
+								cookies++;
+								
+							//IJ.showMessage("outline pixel = "+IJ.d2s(outline_pixel,0));
+							//IJ.showMessage("npoints = "+IJ.d2s(rawpoints.getPolygon().npoints,0));
+							var outline_x = 0;
+							var outline_y = 0;
+							if (outline_pixel != null) {
+								outline_x = rawpoints.getPolygon().xpoints[outline_pixel];
+								outline_y = rawpoints.getPolygon().ypoints[outline_pixel];
+							}
+							//IJ.showMessage("dist = "+IJ.d2s(cross_angle.dist,3)+
+							//	" pixels, Outline = "+IJ.d2s(outline_pixel,0)+
+							//	"x = "+IJ.d2s(outline_x,3)+
+							//	"y = "+IJ.d2s(outline_y,3)
+							//	);
+					
+							for (var k = 0; k < fp; k++) {
+								if (colinear(
+									fparray[k].x, fparray[k].y, 
+									fparray[k].cell_x, fparray[k].cell_y,
+									outline_x*dx, outline_y*dx)) {
+										fparray[k].cell_perimeter = cellperimeter;
+										fparray[k].cross_x = outline_x*dx;
+										fparray[k].cross_y = outline_y*dx;
+										fparray[k].cross_u = cross_angle.dist;
+										fparray[k].cross_rad = cross_angle.rad;
+										fparray[k].neighbor_near_u = neighborx[j];
+										fparray[k].neighbor_left_u = leftneighborx[j];
+										regcross++;
+
+										if (!fparray[k].colinear())
+											IJ.error("Seven.js", "Failed to register filopod #"+IJ.d2s(k,0));
+								}
+									
+							}
+							// accumulate values for averaging
 							neighbormeanx += neighborx[j]; 
 						} 
+						// calculate average
 						neighbormeanx /= neighborx.length; 
-						var cellperimeter = band.width*dx; 
-						var meanx = cellperimeter/bandx.length; // perimeter divided by number of detection events
+						IJ.showMessage(IJ.d2s(poison,0)+" bad, "+IJ.d2s(cookies,0)+" good");
+						IJ.showMessage(IJ.d2s(regcross,0)+" cross, "+IJ.d2s(regfp,0)+" fp");
+						
+						if (regcross != regfp)
+							IJ.error("Seven.js", "Number of crossing points ("+
+								IJ.d2s(regcross,0)+") != Number of registered filopodia ("+
+								IJ.d2s(regfp,0)+")"); 
+
 						// Cui .. Rice, J Chem Phys, 2002 
 						// expected probability density = 2n exp(-n * 2R) where n is number density 
 						// mean = integrated density = integral of -exp(-2nR) 0->inf = 1/2n 
