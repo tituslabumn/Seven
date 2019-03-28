@@ -202,7 +202,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 } 
  
 // Analyze cells using the mask to calculate ROIs, cell area and mean intensity 
-function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) { 
+function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_xs, cell_ys) { 
 	var img3 = img1.duplicate(); 
 	var h = img1.getHeight(); 
 	var w = img1.getWidth(); 
@@ -231,9 +231,9 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) {
         exit; 
     } 
     // get xy coordinates to identify cells with wand tool 
-    var rois = rs.getRoisAsArray(); 
-	var xs = rois[1].getPolygon().xpoints; 
-    var ys = rois[1].getPolygon().ypoints; 
+    var rois = rs.getRoisAsArray(); // returns Java array of ij.gui.Roi[]
+	var xs = rois[1].getPolygon().xpoints; // returns Java array of int[]
+    var ys = rois[1].getPolygon().ypoints; // returns Java array of int[]
  
     // invert image 
     invertImage(img1); 
@@ -270,9 +270,14 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas) {
 		img3.setRoi(rois[i]); 
         rs.select(img3, i); 
         var cellstats = img3.getStatistics(MEASUREMENTS); 
+        // copy cell intensity and xy position to global data arrays
         intensities[i] = cellstats.mean - bgval; // mean background-corrected cell intensity
+        if (xs[i] > 0 && ys[i] > 0) {
+        	cell_xs[i] = xs[i];
+        	cell_ys[i] = ys[i];
+        }
  
-        // Measure cell area 
+        // Measure cell area and copy to global data array
         areas[i] = 0; 
         if (cellstats.area < fullarea) // Incorrectly drawn ROIs will cover the full frame 
 	        areas[i] = cellstats.area; 
@@ -532,15 +537,21 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 	 
 		// Register FP to cells 
-		var fp_per_cell = new Array(nCells); 
-		var cell_per_fp = new Array(fp); 
-		for (var q=0; q<nCells; q++) { 
-			fp_per_cell[q] = 0; 
-		} 
 		var maxdistance_um = 20; // maximum distance from cell center in microns 
 		var maxpixeldist = maxdistance_um/dx;  
 		var regfp = fp; 
 		var cells_with_fp = nCells; 
+		var fp_per_cell = new Array(nCells); // create local array for bookkeeping
+		// initialize to zero - probably not necessary?
+		for (var q=0; q<nCells; q++)
+			fp_per_cell[q] = 0; 
+
+		// assign global array dimensions - probably not necessary (JavaScript very forgiving)
+		cell_per_fp = new Array(fp);     	// reassign dimensions of this global array
+		intensity_per_fp = new Array(fp);   // reassign dimensions of this global array
+		cell_per_fp = new Array(fp);     	// reassign dimensions of this global array
+		xpos_per_fp = new Array(fp);     	// reassign dimensions of this global array
+		ypos_per_fp = new Array(fp);    	// reassign dimensions of this global array
 	 	 
 		for (var u=0; u<fp; u++) { 
 			var score = 1e6; 
@@ -562,14 +573,21 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						pCells.xpoints[reg],pCells.ypoints[reg]) 
 				); 
 	 
-				// Update the count & intensity vector using the unmasked img1 
+				// Update the count of registered filopodia
 				fp_per_cell[reg]++; 
+				// update global data array for intensity using the unmasked img1 
 				intensity_per_fp[u] = getValue(img1, pTips.xpoints[u], pTips.ypoints[u]) 
 					- bgval; // background-corrected peak intensity at tip 
-				cell_per_fp[u] = reg; 
+				// update global data arrays for cell registration and xy position 
+				cell_per_fp[u] = reg;
+				xpos_per_fp[u] = pTips.xpoints[u];
+				ypos_per_fp[u] = pTips.ypoints[u];
 			} else { 
+				// the tip cannot be registered to a cell, i.e., it is a false positive detection event.
 				intensity_per_fp[u] = 0; 
 			    cell_per_fp[u] = -1; 
+				xpos_per_fp[u] = -1;
+				ypos_per_fp[u] = -1;
 				regfp--; 
 			} 
 		} 
@@ -630,13 +648,18 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		celltab.setPrecision(digits); 
 	    var spacingtab = new Packages.ij.measure.ResultsTable(); 
 		spacingtab.setPrecision(digits); 
+	    var crossingtab = new Packages.ij.measure.ResultsTable(); 
+		crossingtab.setPrecision(digits); 
 		 
 	    // Spacing analysis of cell perimeter band 
+	    // Load ROIs for cells 
 	    var rs = new RoiSet(); 
 	    var roifile = new File(anadir+"cell-body-RoiSet"+anaversion+".zip"); 
 	    if (!roifile.exists()) { 
 	    	roifile = new File(anadir+"cell-body-RoiSet"+anaversion+"+.roi"); 
 	    } 
+
+	    // begin perimeter band analysis
 	    if (banded && roifile.exists()) { 
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
@@ -663,7 +686,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						outline.addPoint(rawpoints.getPolygon().xpoints[j],  
 							rawpoints.getPolygon().ypoints[j]); 
 					} 
-					// Correct "C" to "O" shape 
+					// By default the band ROI has "C" shape. Now correct this to an "O" shape:
 					outline.addPoint(rawpoints.getPolygon().xpoints[0],  
 						rawpoints.getPolygon().ypoints[0]); 
 					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
@@ -710,11 +733,18 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
 		 
 						bandx = bandpoints.getPolygon().xpoints; 
+						var radstep = 2*Math.PI/bandx.length;
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, band.width, dx);	 
+						var neighborx = neighbor(bandx, band.width, dx, true);	
+						var leftneighborx = neighbor(bandx, band.width, dx, false);	
 						var neighbormeanx = 0; 
 						for (var j = 0;j<neighborx.length; j++) { 
+							crossingtab.incrementCounter(); 
+							var complex_position = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
+							var thi
+							crossingtab.addValue("Spacing (Delta um)", neighborx[j]);
+							crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
 							neighbormeanx += neighborx[j]; 
 						} 
 						neighbormeanx /= neighborx.length; 
@@ -1144,7 +1174,8 @@ function seven_run(imagefile, frame, anadir, imagetab) {
 		AnalyzeTips(img0.duplicate(), imagefile, anadir, imagetab, boxwidth_um, true); 
 	 
 		// analyze cell body intensity 
-		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, cell_area_body); 
+		// passing of global arrays by reference probably not necessary & somewhat confusing?
+		AnalyzeCells(img0.duplicate(), anadir, 0, "body", cell_body, cell_area_body, cell_xpos, cell_ypos); 
 		AnalyzeScans(img0.duplicate(), imagefile, anadir, boxwidth_um); 
 	 
 		// Analyze tips (second pass) 
@@ -1155,7 +1186,63 @@ function seven_run(imagefile, frame, anadir, imagetab) {
 		if (!DEBUG) { img0.close(); } 
 	}
 } 
- 
+
+function Filopod(x, y, cell_x, cell_y, intensity) {
+	// object to store filopod data 
+	// default values assigned at initialization
+	this.x = x;
+	this.y = y;
+	this.cell_x = cell_x;
+	this.cell_y = cell_y;
+	this.intensity = intensity;
+	if (x<0 || y<0 || cell_x<0 || cell_y<0)
+		IJ.error("Seven.js", "invalid Filopod() initialized with negative coordinate values");
+
+	// default values for properties with true values assigned later
+	this.cross_x = -1;
+	this.cross_y = -1;
+	this.cross_u = -1;
+	this.cross_rad = NaN;
+	this.neighbor_near_u = -1;
+	this.neighbor_left_u = -1;
+	this.neighbor_near_rad = NaN;
+	this.neighbor_left_rad = NaN;
+
+	// calculate parametric angles in degrees
+	this.neighbor_near_deg = this.neighbor_near_rad * 180 / Math.PI;
+	this.neighbor_left_deg = this.neighbor_left_rad * 180 / Math.PI;
+
+	// calculate filopod length/extension distance
+	// (cannot call it length because length is a reserved word)
+	this.extension = function () {
+		var disp_x = x - cross_x;
+		var disp_y = y - cross_y;
+		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
+	}
+
+	// consistency check to verify colinearity
+	this.colinear = function() {
+		var epsilon = 0.01;
+		var ratio = ((cross_y-y)*(cell_x-x)) / ((cell_y-y)*(cross_x-x));
+		
+		if (Math.abs(ratio-1) < epsilon)
+			return true;
+		else
+			return false;
+	}
+
+}
+
+function colinear(x0, y0, x1, y1, x2, y2) {
+	var epsilon = 0.01;
+	var ratio = ((y2-y0)*(x1-x0)) / ((y1-y0)*(x2-x0));
+	
+	if (Math.abs(ratio-1) < epsilon)
+		return true;
+	else
+		return false;
+}
+
 function ClearLog() { 
 	if (IJ.getLog() != null) { 
 		IJ.selectWindow("Log"); 
@@ -1452,7 +1539,7 @@ function noiseThreshold(stats, minSNR) {
 	return noise; 
 } 
  
-function neighbor(vararray, maxdist, dx) { 
+function neighbor(vararray, maxdist, dx, smallest_distance) { 
 	// this function copies an array of x values, ensures they are sorted and then
 	// returns an array with the nearest neighbor distance (delta x) for each position
 	// assuming a circular x coordinate
@@ -1486,7 +1573,10 @@ function neighbor(vararray, maxdist, dx) {
 		dleft = (left[i] - sorted[i] + circ) * dx; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
 		dright = (sorted[i] - right[i] + circ) * dx; 
-		jsarray[i] = (dleft < dright) ? dleft : dright; 
+		if (smallest_distance)
+ 			jsarray[i] = (dleft < dright) ? dleft : dright; 
+ 		else
+			jsarray[i] = dleft;
  
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
@@ -1878,6 +1968,7 @@ function smooth(intensities, smoothwidth) {
 }
 
 function Angle(rad, steps, dx) {
+	// This object reports angular values in radians or degrees and pathlength values in pixels or um
 	this.rad = (rad < 0) ? rad+2*Math.PI : rad; // shift to range [0..2PI]rad;
 	this.deg = this.rad * 180/Math.PI;
 	this.pixel = Math.floor(this.rad * steps/(2*Math.PI));
