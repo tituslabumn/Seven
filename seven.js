@@ -647,6 +647,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		celltab.setPrecision(digits); 
 	    var spacingtab = new Packages.ij.measure.ResultsTable(); 
 		spacingtab.setPrecision(digits); 
+	    var crossingtab = new Packages.ij.measure.ResultsTable(); 
+		crossingtab.setPrecision(digits); 
 		 
 	    // Spacing analysis of cell perimeter band 
 	    // Load ROIs for cells 
@@ -730,21 +732,29 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					if (bandpoints != null && bandpoints.getPolygon() != null) { 
 		 
 						bandx = bandpoints.getPolygon().xpoints; 
+						var radstep = 2*Math.PI/band.width; // parametric distance of one pixel in radians
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
 						var neighborx = neighbor(bandx, dx, true);	
 						var leftneighborx = neighbor(bandx, dx, false);	
 						var neighbormeanx = 0; 
 						for (var j = 0;j<neighborx.length; j++) { 
+							crossingtab.incrementCounter(); 
+							var complex_pos = new Complex(Math.cos(j*radstep), Math.sin(j*radstep));
+							// parametric crossing angle in range [-PI..PI] radians
+							var cross_angle = new Angle(complex_pos.Arg(), band.width, dx); 
+							crossingtab.addValue("Spacing (Delta um)", neighborx[j]);
+							crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
+							crossingtab.addValue("Crossing angle (deg)", cross_angle.deg);
 							neighbormeanx += neighborx[j]; 
 						} 
 						neighbormeanx /= neighborx.length; 
 						var cellperimeter = band.width*dx; 
-						var meanx = cellperimeter/bandx.length; 
+						var meanx = cellperimeter/bandx.length; // perimeter divided by number of detection events
 						// Cui .. Rice, J Chem Phys, 2002 
 						// expected probability density = 2n exp(-n * 2R) where n is number density 
 						// mean = integrated density = integral of -exp(-2nR) 0->inf = 1/2n 
-						var expected = meanx/2; 
+						var expected = meanx/2;  // distance in um
 						 
 						// generate exponential random data 
 						var simpoints = 1000; 
@@ -753,14 +763,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						for (var j = 0; j<simpoints; j++) { 
 							var expvar = 0; 
 							// y = -exp(-2/meanx*R)  
-							// ln (-y) = 2/meanx*R --> R = meanx/2*ln (-y) 
+							// ln (-y) = 2/meanx*R 
+							//         ----> R = meanx/2*ln (-y) 
 							// let y = [-1, 0]; -y = [0, 1] = random variable 
 							do { 
 								expvar = Math.random(); 
-								expdata[j] = -expected*Math.log(expvar); 
+								expdata[j] = -expected*Math.log(expvar); // distance in um
 							} 
 							while (expdata[j] > cellperimeter/2); // enforce circularity 
-							sumdata += expdata[j]; 
+								sumdata += expdata[j]; 
 						} 
 						// can calculate expected value from simulation -  
 						// however this is not reliable at low density (n < 5 or so) 
