@@ -716,11 +716,16 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						 
 						// Generate banded image from original 
 						IJ.run(img_filos, "Straighten...", "line="+IJ.d2s(boxheight,0)); 
-						IJ.run(IJ.getImage(), "Reslice [/]...", "output=1 avoid"); 
+						var extra = IJ.getImage();
+						IJ.run(IJ.getImage(), "Reslice [/]...", "output="+IJ.d2s(dx,0)+" avoid"); 
 						band = IJ.getImage(); 
 		 				
 		 				// Set intensity threshold
 						var bandnoise = 1000; // the filos are above threshold
+						
+						// clean up from reslice procedure
+						extra.changes = false;
+						extra.close();
 					} else {
 						// Apply ROI to image to outline the banded region
 						img1.setRoi(linepoints); 
