@@ -578,6 +578,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		var maxdistance_um = 20; // maximum distance from cell center in microns 
 		var maxpixeldist = maxdistance_um/dx;  
 		var regfp = fp; 
+		var regcross = 0;
 		var cells_with_fp = nCells; 
 		var fp_per_cell = new Array(nCells); // create local array for bookkeeping
 		// initialize to zero - probably not necessary?
@@ -731,6 +732,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var narrow = new Packages.ij.plugin.Straightener(); 
 					var outline_roi = outliner(rawpoints.getPolygon(), outline_points, frame);
 					var band = new ImagePlus();
+					
+					// initialize ladder for lookup of u-coordinate from outline point index
 					for (var j = 0; j<outline_points; j++) {
 						if (j>1) {
 							var this_outline_roi = outliner(rawpoints.getPolygon(), j, frame);
@@ -742,6 +745,47 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						}
 					}
 
+					// store crossing xy point and outline point index in filopod data
+					for (var j = 0; j<outline_points; j++) {
+						if (j == 0)
+							IJ.showMessage(IJ.d2s(fparray[0].x,3)+" "+ 
+								IJ.d2s(fparray[0].y, 3)+" "+
+								IJ.d2s(fparray[0].cell_x, 3)+" "+
+								IJ.d2s(fparray[0].cell_y,3)+" "+
+								IJ.d2s(rawpoints.getPolygon().xpoints[0]*dx,3)+" "+
+								IJ.d2s(rawpoints.getPolygon().ypoints[0]*dx,3));
+						var outline_x = rawpoints.getPolygon().xpoints[j]*dx;
+						var outline_y = rawpoints.getPolygon().ypoints[j]*dx;
+
+						// iterate over filopodia
+						for (var k = 0; k < fp; k++) {
+							if (i == fparray[k].cell_index && colinear(
+								fparray[k].x, fparray[k].y, 
+								fparray[k].cell_x, fparray[k].cell_y,
+								outline_x, outline_y)) {
+									var old_cross_x = fparray[k].cross_x;
+									var old_cross_y = fparray[k].cross_y;
+									var old_extension = fparray[k].extension();
+
+									fparray[k].cross_x = outline_x;
+									fparray[k].cross_y = outline_y;
+									
+									if (fparray[k].outline_index < 0 || fparray[k].extension() < old_extension) {
+										fparray[k].outline_index = j;
+										regcross++; // only count once per fp
+									} else {
+										// revert to previously detected crossing point and index
+										fparray[k].cross_x = old_cross_x;
+										fparray[k].cross_y = old_cross_y;	
+									}
+
+									if (!fparray[k].colinear())
+										IJ.error("Seven.js", "Failed to register filopod #"+IJ.d2s(k,0));
+							}
+								
+						}
+					}
+					
 					// Generate banded image from original 
 					img1.setRoi(outline_roi);
 					bandp = narrow.straighten(img1, outline_roi, boxheight);
@@ -749,25 +793,32 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				
 	 				// Set intensity threshold
 					var bandnoise = noise; // defined above based on whole image 
-					
-					// Find maxima 
-					var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude";
-					IJ.run(band, "Find Maxima...", bandoptions);
-					var bandpoints = band.getRoi(); 
 					var bandx = new Array();
-					if (bandpoints != null && bandpoints.getPolygon() != null) { 
-						bandx = bandpoints.getPolygon().xpoints; 
+					var filo_spacing = true;
+
+					if (filo_spacing) {
+						bandx = new Array(fp);
+						for (var k = 0; k<fp; k++) 
+							// parametric crossing position in pixels
+							bandx[k] = ladder[fparray[k].outline_index] / dx;
+					} else {	
+						// Find maxima 
+						var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude";
+						IJ.run(band, "Find Maxima...", bandoptions);
+						var bandpoints = band.getRoi(); 
+						if (bandpoints != null && bandpoints.getPolygon() != null)
+							bandx = bandpoints.getPolygon().xpoints; 
+					}
+					
+					if (bandx != null && bandx.length > 0) {
 						var radstep = 2*Math.PI/band.width; // parametric distance of one pixel in radians
 						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
 						var skewx = skewness(bandx); 
 						var neighborx = neighbor(bandx, band.width, dx, true);	
 						var leftneighborx = neighbor(bandx, band.width, dx, false);	
 						var neighbormeanx = 0; 
-						var cookies = 0;
-						var poison = 0;
-						var regcross = 0; // number of registered crossing points
 						var cellperimeter = band.width*dx; 
-						var meanx = cellperimeter/bandx.length; // perimeter divided by number of detection events
+						var meanx = cellperimeter/bandx.length; // perimeter in um divided by # detection events
 						for (var j = 0;j<neighborx.length; j++) { 
 							crossingtab.incrementCounter(); 
 							var complex_pos = new Complex(Math.cos(bandx[j]*radstep), Math.sin(bandx[j]*radstep));
@@ -783,61 +834,20 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
 							crossingtab.addValue("Crossing angle (deg)", cross_angle.deg);
 
-							// add data to filopod array
-							var outline_pixel = lookup(ladder, cross_angle.dist);
-							if (Math.abs((outline_pixel-0.5)*cellperimeter/
-								(rawpoints.getPolygon().npoints*cross_angle.dist)-1) > 0.1)
-						//		IJ.error("Seven.js", "Path lookup error exceeds tolerance");
-								poison++;
-							else
-								cookies++;
-								
-							//IJ.showMessage("outline pixel = "+IJ.d2s(outline_pixel,0));
-							//IJ.showMessage("npoints = "+IJ.d2s(rawpoints.getPolygon().npoints,0));
-							var outline_x = 0;
-							var outline_y = 0;
-							if (outline_pixel != null) {
-								outline_x = rawpoints.getPolygon().xpoints[outline_pixel];
-								outline_y = rawpoints.getPolygon().ypoints[outline_pixel];
-							}
-							//IJ.showMessage("dist = "+IJ.d2s(cross_angle.dist,3)+
-							//	" pixels, Outline = "+IJ.d2s(outline_pixel,0)+
-							//	"x = "+IJ.d2s(outline_x,3)+
-							//	"y = "+IJ.d2s(outline_y,3)
-							//	);
-					
-							for (var k = 0; k < fp; k++) {
-								if (colinear(
-									fparray[k].x, fparray[k].y, 
-									fparray[k].cell_x, fparray[k].cell_y,
-									outline_x*dx, outline_y*dx)) {
-										fparray[k].cell_perimeter = cellperimeter;
-										fparray[k].cross_x = outline_x*dx;
-										fparray[k].cross_y = outline_y*dx;
-										fparray[k].cross_u = cross_angle.dist;
-										fparray[k].cross_rad = cross_angle.rad;
-										fparray[k].neighbor_near_u = neighborx[j];
-										fparray[k].neighbor_left_u = leftneighborx[j];
-										regcross++;
-
-										if (!fparray[k].colinear())
-											IJ.error("Seven.js", "Failed to register filopod #"+IJ.d2s(k,0));
-								}
-									
-							}
 							// accumulate values for averaging
 							neighbormeanx += neighborx[j]; 
 						} 
 						// calculate average
 						neighbormeanx /= neighborx.length; 
-						IJ.showMessage(IJ.d2s(poison,0)+" bad, "+IJ.d2s(cookies,0)+" good");
-						IJ.showMessage(IJ.d2s(regcross,0)+" cross, "+IJ.d2s(regfp,0)+" fp");
-						
-						if (regcross != regfp)
-							IJ.error("Seven.js", "Number of crossing points ("+
-								IJ.d2s(regcross,0)+") != Number of registered filopodia ("+
-								IJ.d2s(regfp,0)+")"); 
 
+						for (var k = 0; k < fp; k++) {
+							fparray[k].cell_perimeter = cellperimeter;
+							fparray[k].cross_u = cross_angle.dist;
+							fparray[k].cross_rad = cross_angle.rad;
+							fparray[k].neighbor_near_u = neighborx[j];
+							fparray[k].neighbor_left_u = leftneighborx[j];
+						}
+						
 						// Cui .. Rice, J Chem Phys, 2002 
 						// expected probability density = 2n exp(-n * 2R) where n is number density 
 						// mean = integrated density = integral of -exp(-2nR) 0->inf = 1/2n 
@@ -1050,6 +1060,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		if (!DEBUG) { img1.close(); } 
  
 		if (!skiptips) { 
+			if (regcross != regfp)
+				IJ.error("Seven.js", "Number of crossing points ("+
+					IJ.d2s(regcross,0)+") != Number of registered filopodia ("+
+					IJ.d2s(regfp,0)+")"); 
+
 			IJ.log("Cell count = "+IJ.d2s(nCells,0)); 
 			IJ.log("Raw FP count = "+IJ.d2s(nRawTips,0)); 
 			IJ.log("FP count = "+IJ.d2s(fp,0)); 
