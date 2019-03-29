@@ -409,6 +409,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	if (img1.getNSlices() >= frame)
 		img1.setSlice(frame);
 
+	// local array for filopodia
+	var fparray = new Array();
+
 	// get raw image stats	
 	var stats = img1.getStatistics(MEASUREMENTS); 
 	var bgval = stats.dmode; // use instead of minval - this is black level of whole image
@@ -627,13 +630,13 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 			 
 		// local array for filopodia
-	 	var fparray = new Array(regfp);
+	 	fparray = new Array(regfp);
 	 	var v = 0;
 		for (var u = 0; u < fp; u++) {
 			if (cell_per_fp[u] >= 0) {
-				fparray[v] = new Filopod(xpos_per_fp[u], ypos_per_fp[u], 
-					pCells.xpoints[cell_per_fp[u]], pCells.ypoints[cell_per_fp[u]],
-					0, intensity_per_fp[u]);
+				fparray[v] = new Filopod(xpos_per_fp[u]*dx, ypos_per_fp[u]*dx, 
+					pCells.xpoints[cell_per_fp[u]]*dx, pCells.ypoints[cell_per_fp[u]]*dx,
+					cell_per_fp[u], intensity_per_fp[u]);
 				v++;
 			}
 		}
@@ -1261,19 +1264,21 @@ function seven_run(imagefile, anadir, imagetab) {
 	}
 } 
 
-function Filopod(x, y, cell_x, cell_y, cell_perimeter, intensity) {
+function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	// object to store filopod data 
 	// default values assigned at initialization
 	this.x = x;
 	this.y = y;
 	this.cell_x = cell_x;
 	this.cell_y = cell_y;
-	this.cell_perimeter = cell_perimeter;
+	this.cell_perimeter = 0;
+	this.cell_index = cell_index;
 	this.intensity = intensity;
 	if (x<0 || y<0 || cell_x<0 || cell_y<0)
 		IJ.error("Seven.js", "invalid Filopod() initialized with negative coordinate values");
 
 	// default values for properties with true values assigned later
+	this.outline_index = -1;
 	this.cross_x = -1;
 	this.cross_y = -1;
 	this.cross_u = -1;
