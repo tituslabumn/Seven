@@ -765,10 +765,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 									fparray[k].cross_x = outline_x;
 									fparray[k].cross_y = outline_y;
+									//if (fparray[k].outline_index >= 0)
+									//	IJ.showMessage(IJ.d2s(fparray[k].extension(),digits)+" vs "+
+									//		IJ.d2s(old_extension,digits)+" at k="+IJ.d2s(k,0));
 									
-									if (fparray[k].outline_index < 0 || fparray[k].extension() < old_extension) {
-										fparray[k].outline_index = j;
+									if (fparray[k].outline_index < 0) {
+										fparray[k].outline_index = j; // set the index for the first time
 										regcross++; // only count once per fp
+									} else if (fparray[k].extension() < old_extension) {
+										fparray[k].outline_index = j; // save the new index
 									} else {
 										// revert to previously detected crossing point and index
 										fparray[k].cross_x = old_cross_x;
