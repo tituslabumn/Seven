@@ -791,6 +791,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					img1.setRoi(outline_roi);
 					bandp = narrow.straighten(img1, outline_roi, boxheight);
 					band = new ImagePlus("Perimeter band", bandp);
+					var bandperimeter = outline_roi.getLength();
 				
 	 				// Set intensity threshold
 					var bandnoise = noise; // defined above based on whole image 
@@ -881,7 +882,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	 
 						// Reporting 
 						spacingtab.addValue("Number of Particles", bandx.length); 
-						spacingtab.addValue("Band perimeter (um)", cellperimeter); 
+						spacingtab.addValue("Band perimeter (um)", bandperimeter); 
 						spacingtab.addValue("Band perimeter/N (um)", meanx); 
 						spacingtab.addValue("Neighbor spacing (um)", neighbormeanx); 
 						if (neighborx != null)
