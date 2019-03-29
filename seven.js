@@ -800,9 +800,13 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 					if (filo_spacing) {
 						bandx = new Array(fp);
-						for (var k = 0; k<fp; k++) 
+						var fpcount = 0;
+						for (var k = 0; k<fp; k++) {
 							// parametric crossing position in pixels
-							bandx[k] = ladder[fparray[k].outline_index] / dx;
+							if (i == fparray[k].cell_index) {
+								bandx[fpcount++] = contour[fparray[k].outline_index] / dx;
+							}
+						}
 					} else {	
 						// Find maxima 
 						var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude";
@@ -810,44 +814,83 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						var bandpoints = band.getRoi(); 
 						if (bandpoints != null && bandpoints.getPolygon() != null)
 							bandx = bandpoints.getPolygon().xpoints; 
+						
+						if (bandx != null && bandx.length > 0) {
+							var radstep = 2*Math.PI/bandperimeter*dx; // parametric distance of one pixel in radians
+							var skewx = skewness(bandx); 
+							var neighborx = neighbor(bandx, bandperimeter, 1, true);	
+							var leftneighborx = neighbor(bandx, bandperimeter, 1, false);	
+							var neighbormeanx = 0;  
+							var meanx = bandperimeter/bandx.length; // perimeter in um divided by # detection events
+							
+							for (var j = 0;j<neighborx.length; j++) { 
+								crossingtab.incrementCounter(); 
+	
+								// report data to table
+								crossingtab.addValue("Spacing (Delta um)", neighborx[j]);
+								crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
+								//crossingtab.addValue("Crossing angle (deg)", cross_angle.deg);
+	
+								// accumulate values for averaging
+								neighbormeanx += neighborx[j]; 
+							} 
+							// calculate average
+							neighbormeanx /= neighborx.length; 
+						}
 					}
-					
+
+					// main filo analysis
 					if (bandx != null && bandx.length > 0) {
-						var radstep = 2*Math.PI/band.width; // parametric distance of one pixel in radians
-						// var bandy = rBand.getPolygon().ypoints; // don't need y for 1-D search
-						var skewx = skewness(bandx); 
-						var neighborx = neighbor(bandx, band.width, dx, true);	
-						var leftneighborx = neighbor(bandx, band.width, dx, false);	
-						var neighbormeanx = 0; 
-						var cellperimeter = band.width*dx; 
-						var meanx = cellperimeter/bandx.length; // perimeter in um divided by # detection events
-						for (var j = 0;j<neighborx.length; j++) { 
-							crossingtab.incrementCounter(); 
-							var complex_pos = new Complex(Math.cos(bandx[j]*radstep), Math.sin(bandx[j]*radstep));
-							// parametric crossing angle in range [-PI..PI] radians
-							var cross_angle = new Angle(complex_pos.Arg(), band.width, dx); 
+						// start of neighbor analysis
+						var radstep = 2*Math.PI/bandperimeter*dx; // parametric distance of one pixel in radians
+						var temparray = new Array(fp);
+						var fps = 0;
+						for (var k = 0; k < fp; k++)
+							if (i == fparray[k].cell_index)
+								temparray[fps++] = (fparray[k].outline_index*dx);
+						// Copy to java array for compatibility with neighbor()
+						var fp_u = new Packages.java.lang.reflect.Array.newInstance(java.lang.Float, fps); 
+						for (var k = 0; k < fps; k++)
+							fp_u[k] = temparray[k];
 
-							//IJ.showMessage("deg = "+IJ.d2s(cross_angle.deg,3));
-							//IJ.showMessage("rad = "+IJ.d2s(cross_angle.rad,3));
-							//IJ.showMessage("dist = "+IJ.d2s(cross_angle.dist,3));
-							//IJ.showMessage("perimeter = "+IJ.d2s(cellperimeter,3));
-							// report data to table
-							crossingtab.addValue("Spacing (Delta um)", neighborx[j]);
-							crossingtab.addValue("Left Spacing (Delta um)", leftneighborx[j]);
-							crossingtab.addValue("Crossing angle (deg)", cross_angle.deg);
-
-							// accumulate values for averaging
-							neighbormeanx += neighborx[j]; 
-						} 
-						// calculate average
-						neighbormeanx /= neighborx.length; 
-
-						for (var k = 0; k < fp; k++) {
-							fparray[k].cell_perimeter = cellperimeter;
-							fparray[k].cross_u = cross_angle.dist;
-							fparray[k].cross_rad = cross_angle.rad;
-							fparray[k].neighbor_near_u = neighborx[j];
-							fparray[k].neighbor_left_u = leftneighborx[j];
+						var skewx = null;
+						var neighborx = null;
+						var leftneighborx = null;
+						var neighbormeanx = 0;  
+						var meanx = 0;
+						if (fps > 0) {
+							skewx = skewness(fp_u); 
+							neighborx = neighbor(fp_u, bandperimeter, 1, true);	
+							leftneighborx = neighbor(fp_u, bandperimeter, 1, false);
+							meanx = bandperimeter/fp_u.length; // perimeter in um divided by # detection events
+							//IJ.showMessage(IJ.d2s(neighborx.length,0)+" neighbors found in this cell");
+							
+							for (var k = 0;k<neighborx.length; k++)
+								neighbormeanx += neighborx[k]; 
+							// calculate average
+							neighbormeanx /= neighborx.length; 
+						}
+						
+						// reset fp counter
+						var fps = 0;
+						for (var k = 0; k < fp; k++) {	
+							if (i == fparray[k].cell_index) {		
+								var complex_pos = new Complex(
+									Math.cos(fparray[k].outline_index*radstep), 
+									Math.sin(fparray[k].outline_index*radstep));
+								// parametric crossing angle in range [0..2PI] radians
+								var cross_angle = new Angle(complex_pos.Arg(), bandperimeter, 1); 
+								
+								fparray[k].cell_perimeter = rois[fparray[k].cell_index].getLength();
+								fparray[k].cross_u = cross_angle.dist;
+								fparray[k].cross_rad = cross_angle.rad;
+								fparray[k].cross_deg = cross_angle.deg;
+								if (neighborx != null) {
+									fparray[k].neighbor_near_u = neighborx[fps];
+									fparray[k].neighbor_left_u = leftneighborx[fps];
+									fps++;							
+								}
+							}
 						}
 						
 						// Cui .. Rice, J Chem Phys, 2002 
@@ -1128,20 +1171,34 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			// Build results table
 			for (var v = 0; v < fp; v++) { 
 			    filotab.incrementCounter(); 
-			    var cellid = cell_per_fp[v]; 
+			    var cellid = fparray[v].cell_index; 
 			    if (cellid >= 0) { 
 			    	reg++; 
-				    var tipbody = intensity_per_fp[v] / cell_body[cellid]; 
-				    var tipband = intensity_per_fp[v] / cell_band[cellid]; 
+				    var tipbody = fparray[v].intensity / cell_body[cellid]; 
+				    var tipband = fparray[v].intensity / cell_band[cellid]; 
 				 
 				    IJ.log("\t" + IJ.d2s(reg, 0) + "\t" 
-				    	+ IJ.d2s(intensity_per_fp[v], 0) + "\t" 
+				    	+ IJ.d2s(fparray[v].intensity, 0) + "\t" 
 			            + IJ.d2s(cell_body[cellid],0) + "\t" 
 			            + IJ.d2s(cellid, 0) + "\t" 
 			            + IJ.d2s(tipbody, digits) + "\t" 
 			            + IJ.d2s(tipband, digits)); 
 			             
-		            filotab.addValue("Tip intensity", intensity_per_fp[v]); 
+		            filotab.addValue("Tip X (um)", fparray[v].x); 
+		            filotab.addValue("Tip Y (um)", fparray[v].y); 
+		            filotab.addValue("Cross X (um)", fparray[v].cross_x); 
+		            filotab.addValue("Cross Y (um)", fparray[v].cross_y); 
+		            filotab.addValue("Extension Length (um)", fparray[v].extension()); 
+		            filotab.addValue("Parametric Distance (um))", fparray[v].cross_u);
+		            filotab.addValue("Parametric Angle (deg))", fparray[v].cross_deg);
+		            filotab.addValue("Cell X (um)", fparray[v].cell_x); 
+		            filotab.addValue("Cell Y (um)", fparray[v].cell_y); 
+		            filotab.addValue("Perimeter (um)", fparray[v].cell_perimeter); 
+		            filotab.addValue("Nearest neighbor (Delta um)", fparray[v].neighbor_near_u); 
+		            filotab.addValue("Nearest neighbor (Delta deg)", fparray[v].neighbor_near_deg()); 
+		            filotab.addValue("Left neighbor (Delta um)", fparray[v].neighbor_left_u); 
+		            filotab.addValue("Left neighbor (Delta deg)", fparray[v].neighbor_left_deg()); 
+		            filotab.addValue("Tip intensity", fparray[v].intensity); 
 		            filotab.addValue("Cell intensity", cell_body[cellid]); 
 		            filotab.addValue("Cell ID", cellid); 
 		            filotab.addValue("Tip:Cell Ratio", tipbody); 
