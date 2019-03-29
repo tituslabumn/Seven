@@ -720,7 +720,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
 					var rawpoints = img1.getRoi(); 
 					var outline_points = rawpoints.getPolygon().xpoints.length;
-					var ladder = new Array(outline_points);
+					var contour = new Array(outline_points);
 					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
 						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
 						rawpoints.getPolygon().ypoints[0]+1);
@@ -733,32 +733,28 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var outline_roi = outliner(rawpoints.getPolygon(), outline_points, frame);
 					var band = new ImagePlus();
 					
-					// initialize ladder for lookup of u-coordinate from outline point index
+					// initialize contour for lookup of u-coordinate from outline point index
 					for (var j = 0; j<outline_points; j++) {
 						if (j>1) {
 							var this_outline_roi = outliner(rawpoints.getPolygon(), j, frame);
 							img1.setRoi(this_outline_roi);
 							bandp = narrow.straighten(img1, this_outline_roi, 1);
-							ladder[j] = dx*bandp.width;
+							//if (j==2)
+							//	IJ.showMessage(IJ.d2s(this_outline_roi.getLength(),3)+"/"+IJ.d2s(outline_points,3));
+							contour[j] = this_outline_roi.getLength();
 						} else {
-							ladder[j] = 0;
+							contour[j] = 0;
 						}
 					}
 
 					// store crossing xy point and outline point index in filopod data
 					for (var j = 0; j<outline_points; j++) {
-						if (j == 0)
-							IJ.showMessage(IJ.d2s(fparray[0].x,3)+" "+ 
-								IJ.d2s(fparray[0].y, 3)+" "+
-								IJ.d2s(fparray[0].cell_x, 3)+" "+
-								IJ.d2s(fparray[0].cell_y,3)+" "+
-								IJ.d2s(rawpoints.getPolygon().xpoints[0]*dx,3)+" "+
-								IJ.d2s(rawpoints.getPolygon().ypoints[0]*dx,3));
 						var outline_x = rawpoints.getPolygon().xpoints[j]*dx;
 						var outline_y = rawpoints.getPolygon().ypoints[j]*dx;
 
 						// iterate over filopodia
 						for (var k = 0; k < fp; k++) {
+							//IJ.showMessage("Index "+IJ.d2s(i,0)+" ? "+IJ.d2s(fparray[k].outline_index,0));
 							if (i == fparray[k].cell_index && colinear(
 								fparray[k].x, fparray[k].y, 
 								fparray[k].cell_x, fparray[k].cell_y,
