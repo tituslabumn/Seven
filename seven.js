@@ -625,13 +625,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				regfp--; 
 			} 
 		} 
-	 
-		// Generate intermediate image for filo spacing - line color is white for thresholding
-		var img_filos = img1.duplicate();
- 		if (img_filos.getNSlices() >= frame)
- 			img_filos.setSlice(frame);
-		img_filos.setColor(Color.WHITE); 
-		var ip_filos = img_filos.getProcessor(); 
 			 
 		// local array for filopodia
 	 	var fparray = new Array(regfp);
@@ -663,25 +656,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				scanroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze
 				scanroi.setStrokeWidth(1); 
 				img2.setRoi(scanroi); 
-				img_filos.setRoi(scanroi);
 	 
 				// Calculate line scan using the masked img2 
 				ScanLine(img2, anadir, linescantag, dx, u);
 	 
 				// Mark with a line on the masked img2 
 				ip2.draw(scanroi); 
-				ip_filos.draw(scanroi); 
 			} 
 		} 
- 
-	//var Overalltipfile = root+sep+"Overall-angle-result"+"-"+anaversion+".txt"; 
-	// var text = IJ.getLog(); 
-
-	// Save the linescan as text file
-	// saveText(Overalltipfile, tipdata, false); 
-		//sampletab.save(anadir+"sample-results-"+anaversion+"."+resultsformat);
-	//	IJ.log("ncells = " + nCells); 
-		 
+	 
 		// Trim the count of cells 
 		for (var z=0;z<nCells;z++) { 
 			if (fp_per_cell[z] == 0) { cells_with_fp--; } 
@@ -755,31 +738,17 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							ladder[j] = 0;
 						}
 					}
-					once = false;
 
-					var draw_filos = true;
-					if (draw_filos) {
-						// Generate banded image from original 
-						img_filos.setRoi(outline_roi);
-						bandp = narrow.straighten(img_filos, outline_roi, 1);
-						band = new ImagePlus("Perimeter band", bandp);
-						
-		 				// Set intensity threshold
-						var bandnoise = 1000; // the filos are above threshold
-					} else {
-						// Generate banded image from original 
-						img1.setRoi(outline_roi);
-						bandp = narrow.straighten(img1, outline_roi, boxheight);
-						band = new ImagePlus("Perimeter band", bandp);
-					
-		 				// Set intensity threshold
-						var bandnoise = noise; // defined above based on whole image 
-					}
+					// Generate banded image from original 
+					img1.setRoi(outline_roi);
+					bandp = narrow.straighten(img1, outline_roi, boxheight);
+					band = new ImagePlus("Perimeter band", bandp);
+				
+	 				// Set intensity threshold
+					var bandnoise = noise; // defined above based on whole image 
 					
 					// Find maxima 
-					var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection]";
-					if (!draw_filos)
-						bandoptions += " exclude"; 
+					var bandoptions = "noise="+IJ.d2s(bandnoise,0)+" output=[Point Selection] exclude";
 					IJ.run(band, "Find Maxima...", bandoptions);
 					var bandpoints = band.getRoi(); 
 					var bandx = new Array();
@@ -916,28 +885,12 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					var nPixels = borderpixels.length;
 					var gfpval = 200; // ? standardize intensity weights - need to determine suitable value
 					var borderweights = new Array(nPixels); 
-					// initialize to 0 - probably redundant?
-					for (var j = 0; j<nPixels; j++) { 
-						borderweights[j] = 0; 
-					} 
 
-					if (draw_filos) { // use binary weights
-						if (bandpoints != null && bandpoints.getPolygon() != null) { 
-							for (var j = 0; j<bandx.length; j++) {
-								if (bandx[j] < nPixels)
-									borderweights[bandx[j]] = 1;
-							}
-						}			
-					} else { // use intensity weights
-						for (var j = 0; j<nPixels; j++) { 
-							// normalize intensity weights
-							borderweights[j] = borderpixels[j] / gfpval;
-						}
-					}
-					
-					// background subtraction
-					for (var j = 0; j<nPixels; j++) {
-						borderpixels[j] -= bgval;
+					// use intensity weights
+					for (var j = 0; j<nPixels; j++) { 
+						// perform background subtraction &
+						// normalize intensity weights
+						borderweights[j] = (borderpixels[j] - bgval) / gfpval;
 					}
 					
 					// smoothing
