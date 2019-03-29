@@ -1422,7 +1422,8 @@ function colinear(x0, y0, x1, y1, x2, y2) {
 		return false;
 }
 
-function colinear2(x0, y0, x1, y1, x2, y2, errval) {
+function colinear2(x0, y0, x1, y1, x2, y2) {
+	var errval = 10;
 	var denom = ((y1-y0)*(x2-x0));
 
 	if ((x0 == x1 && x0 == x2) || (y0 == y1 && y0 == y2))
