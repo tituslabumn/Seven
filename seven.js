@@ -868,13 +868,15 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 								expvar = Math.random(); 
 								expdata[j] = -expected*Math.log(expvar); // distance in um
 							} 
-							while (expdata[j] > cellperimeter/2); // enforce circularity 
+							while (expdata[j] > bandperimeter/2); // enforce circularity 
 								sumdata += expdata[j]; 
 						} 
 						// can calculate expected value from simulation -  
 						// however this is not reliable at low density (n < 5 or so) 
 						var simexpected = sumdata / simpoints; 
-						var skew_neighbor = skewness(neighborx); 
+						var skew_neighbor = null;
+						if (neighborx != null)
+							skew_neighbor = skewness(neighborx); 
 						var skew_sim = skewness(expdata); 
 	 
 						// Reporting 
@@ -882,7 +884,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						spacingtab.addValue("Band perimeter (um)", cellperimeter); 
 						spacingtab.addValue("Band perimeter/N (um)", meanx); 
 						spacingtab.addValue("Neighbor spacing (um)", neighbormeanx); 
-						spacingtab.addValue("Neighbor skewness", skew_neighbor); 
+						if (neighborx != null)
+							spacingtab.addValue("Neighbor skewness", skew_neighbor); 
 						spacingtab.addValue("Neighbor spacing - expected (um)", IJ.d2s(simexpected,digits)); 
 						spacingtab.addValue("Neighbor skewness - expected", skew_sim);  
 					} 
