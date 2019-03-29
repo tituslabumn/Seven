@@ -1337,11 +1337,12 @@ function colinear(x0, y0, x1, y1, x2, y2) {
 
 function lookup(cumulative, input) {
 	var output = null;
-
-	for (var i = 0; i < cumulative.length; i++)
-		if (output == null && cumulative[i] >= input)
+	var i = 0;
+	
+	while (output == null && i < cumulative.length)
+		if (cumulative[i] >= input)
 			output = i;
-			
+
 	return output;
 }
 
