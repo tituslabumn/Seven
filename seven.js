@@ -1339,10 +1339,12 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	
 	// consistency check to verify colinearity
 	this.colinear = function() {
-		var epsilon = 0.01;
-		var ratio = ((this.cross_y-y)*(this.cell_x-x)) / ((this.cell_y-y)*(this.cross_x-x));
+		var epsilon = 0.4;
+		var ratio = colinear2(this.cell_x, this.cell_y, this.x, this.y, this.cross_x, this.cross_y);
+		var ratio2 = colinear2(this.x, this.y, this.cell_x, this.cell_y, this.cross_x, this.cross_y);
+		var ratio3 = colinear2(this.cross_x, this.cross_y, this.x, this.y, this.cell_x, this.cell_y);
 		
-		if (Math.abs(ratio-1) < epsilon)
+		if (Math.abs(ratio-1) < epsilon || Math.abs(ratio2-1) < epsilon || Math.abs(ratio3-1) < epsilon)
 			return true;
 		else
 			return false;
@@ -1351,13 +1353,27 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 }
 
 function colinear(x0, y0, x1, y1, x2, y2) {
-	var epsilon = 0.01;
-	var ratio = ((y2-y0)*(x1-x0)) / ((y1-y0)*(x2-x0));
+	var epsilon = 0.4;
+	var ratio = colinear2(x0, y0, x1, y1, x2, y2);
+	var ratio2 = colinear2(x1, y1, x0, y0, x2, y2);
+	var ratio3 = colinear2(x2, y2, x1, y1, x0, y0);
 	
-	if (Math.abs(ratio-1) < epsilon)
+	if (Math.abs(ratio-1) < epsilon || Math.abs(ratio2-1) < epsilon || Math.abs(ratio3-1) < epsilon)
 		return true;
 	else
 		return false;
+}
+
+function colinear2(x0, y0, x1, y1, x2, y2, errval) {
+	var denom = ((y1-y0)*(x2-x0));
+
+	if ((x0 == x1 && x0 == x2) || (y0 == y1 && y0 == y2))
+		return 1; // the values are colinear
+
+	if (denom != 0)
+		return ((y2-y0)*(x1-x0)) / denom;
+	else
+		return errval;
 }
 
 function lookup(cumulative, input) {
