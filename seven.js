@@ -1284,8 +1284,8 @@ function Filopod(x, y, cell_x, cell_y, cell_perimeter, intensity) {
 	// calculate filopod length/extension distance
 	// (cannot call it length because length is a reserved word)
 	this.extension = function () {
-		var disp_x = x - cross_x;
-		var disp_y = y - cross_y;
+		var disp_x = x - this.cross_x;
+		var disp_y = y - this.cross_y;
 		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
 	}
 
@@ -1314,7 +1314,7 @@ function Filopod(x, y, cell_x, cell_y, cell_perimeter, intensity) {
 	
 	// consistency check to verify colinearity
 	this.colinear = function() {
-		var epsilon = 0.1;
+		var epsilon = 0.01;
 		var ratio = ((this.cross_y-y)*(this.cell_x-x)) / ((this.cell_y-y)*(this.cross_x-x));
 		
 		if (Math.abs(ratio-1) < epsilon)
@@ -1326,7 +1326,7 @@ function Filopod(x, y, cell_x, cell_y, cell_perimeter, intensity) {
 }
 
 function colinear(x0, y0, x1, y1, x2, y2) {
-	var epsilon = 0.1;
+	var epsilon = 0.01;
 	var ratio = ((y2-y0)*(x1-x0)) / ((y1-y0)*(x2-x0));
 	
 	if (Math.abs(ratio-1) < epsilon)
@@ -1667,7 +1667,7 @@ function neighbor(vararray, maxdist, dx, minimize) {
 	// assuming a circular x coordinate.
 	//
 	// Input values
-	// vararray : a Java array
+	// vararray : a Java array of 1-D positions in pixels
 	// maxdist	: perimeter distance in pixels
 	// dx		: width of a pixel in um
 	// minimize	: true = return smallest distance, false = return left hand distance
@@ -1699,23 +1699,23 @@ function neighbor(vararray, maxdist, dx, minimize) {
 	 
 		// calculate immediate neighbors absolute distance 
 		var circ = 0; // implement circularity 
-		var pixels = 0; // distance in pixels
+		var dist = 0; // distance in um
 		circ = (sorted[i] > left[i]) ? maxdist : 0; 
 		dleft = (left[i] - sorted[i] + circ) * dx; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
 		dright = (sorted[i] - right[i] + circ) * dx; 
 		if (minimize)
- 			pixels = (dleft < dright) ? dleft : dright; 
+ 			dist = (dleft < dright) ? dleft : dright; 
  		else
-			pixels = dleft;
+			dist = dleft;
  
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
 			IJ.showMessage("Neighbor distance failed, must be positive"); 
 		} 
 
-		// convert result to um and copy to array
-		jsarray[i] = pixels*dx;
+		// copy result to array
+		jsarray[i] = dist;
 	} 
 	return jsarray; 
 } 
