@@ -1687,7 +1687,7 @@ function noiseThreshold(stats, minSNR) {
 	return noise; 
 } 
  
-function neighbor(vararray, maxdist, dx, minimize) { 
+function neighbor(vararray, maxdist, scale, minimize) { 
 	// this function copies an array of x values, ensures they are sorted and then
 	// returns an array with the nearest neighbor distance (delta x) for each position
 	// assuming a circular x coordinate.
@@ -1695,18 +1695,21 @@ function neighbor(vararray, maxdist, dx, minimize) {
 	// Input values
 	// vararray : a Java array of 1-D positions in pixels
 	// maxdist	: perimeter distance in pixels
-	// dx		: width of a pixel in um
+	// scale	: width of a pixel in um
 	// minimize	: true = return smallest distance, false = return left hand distance
 	//
 	// Output value is a distance in um
 
+	// ensure the array is sorted
+	Packages.java.util.Arrays.sort(vararray);
+	
 	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
 	for (var i = 0; i<jsarray.length; i++) { 
 		jsarray[i] = vararray[i]; 
 	} 
  
-	// sort array 
+	// sort array -- this is not guaranteed by every JavaScript environment, be sure to verify
 	var sorted = new Array(vararray.length); 
 	sorted = jsarray.slice(); 
 	var left = sorted.slice(); 
@@ -1727,9 +1730,9 @@ function neighbor(vararray, maxdist, dx, minimize) {
 		var circ = 0; // implement circularity 
 		var dist = 0; // distance in um
 		circ = (sorted[i] > left[i]) ? maxdist : 0; 
-		dleft = (left[i] - sorted[i] + circ) * dx; 
+		dleft = (left[i] - sorted[i] + circ) * scale; 
 		circ = (sorted[i] < right[i]) ? maxdist : 0; 
-		dright = (sorted[i] - right[i] + circ) * dx; 
+		dright = (sorted[i] - right[i] + circ) * scale; 
 		if (minimize)
  			dist = (dleft < dright) ? dleft : dright; 
  		else
