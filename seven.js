@@ -2129,17 +2129,22 @@ function smooth(intensities, smoothwidth) {
 	}
 }
 
-function Angle(rad, steps, dx) {
+function Angle(rad, steps, scale) {
 	// This object reports angular values in radians or degrees and pathlength values in pixels or um
 	//
-	// rad: 	angle in radians
-	// steps:	total perimeter distance in pixels
-	//	dx:		width of a pixel in um
+	// rad		: 	angle in radians
+	// steps	:	total perimeter distance in pixels
+	// scale	:	width of a pixel in um
 	
 	this.rad = (rad < 0) ? rad+2*Math.PI : rad; // shift to range [0..2PI]rad;
 	this.deg = this.rad * 180/Math.PI;
-	this.pixel = Math.floor(this.rad * steps/(2*Math.PI));
-	this.dist = this.pixel * dx;
+
+	this.pixel = this.rad * steps/(2*Math.PI);
+	
+	if (scale != 1)	
+		this.pixel = Math.floor(this.rad); // enforce integer values when using pixel units
+			
+	this.dist = this.pixel * scale;
 	
 	// Convert to a string ...
 	this.toString = function() {
