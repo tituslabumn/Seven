@@ -1291,30 +1291,31 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	this.y = y;
 	this.cell_x = cell_x;
 	this.cell_y = cell_y;
-	this.cell_perimeter = 0;
 	this.cell_index = cell_index;
 	this.intensity = intensity;
-	if (x<0 || y<0 || cell_x<0 || cell_y<0)
-		IJ.error("Seven.js", "invalid Filopod() initialized with negative coordinate values");
+	if (x<0 || y<0 || cell_x<0 || cell_y<0 || cell_index<0 || intensity<0 )
+		IJ.error("Seven.js", "invalid Filopod() initialized with negative values");
 
 	// default values for properties with true values assigned later
+	this.cell_perimeter = 0;
 	this.outline_index = -1;
 	this.cross_x = -1;
 	this.cross_y = -1;
 	this.cross_u = -1;
 	this.cross_rad = NaN;
+	this.cross_deg = NaN;
 	this.neighbor_near_u = -1;
 	this.neighbor_left_u = -1;
 
 	// calculate filopod length/extension distance
 	// (cannot call it length because length is a reserved word)
 	this.extension = function () {
-		var disp_x = x - this.cross_x;
-		var disp_y = y - this.cross_y;
+		var disp_x = this.x - this.cross_x;
+		var disp_y = this.y - this.cross_y;
 		return Math.sqrt(Math.pow(disp_x, 2) + Math.pow(disp_y, 2));
 	}
 
-	// calculate parametric angles in radians
+	// calculate parametric angles in radians	
 	this.neighbor_near_rad = function () {
 		if (this.neighbor_near_u >= 0)
 			return this.neighbor_near_u/this.cell_perimeter*2*Math.PI;
@@ -1331,10 +1332,10 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	
 	// calculate parametric angles in degrees (evaluate at call time)
 	this.neighbor_near_deg = function () {
-		return this.neighbor_near_rad * 180 / Math.PI;
+		return this.neighbor_near_rad() * 180 / Math.PI;
 	}
 	this.neighbor_left_deg = function () {
-		return this.neighbor_left_rad * 180 / Math.PI;
+		return this.neighbor_left_rad() * 180 / Math.PI;
 	}
 	
 	// consistency check to verify colinearity
