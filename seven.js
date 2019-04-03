@@ -531,11 +531,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			if (tipx[a] >= radius_scan && tipx[a] < (w-radius_scan) && 
 				tipy[a] >= radius_scan && tipy[a] < (h-radius_scan)) {
 				var radius_scanroi = new Packages.ij.gui.Line( 
-<<<<<<< HEAD
 					tipx[a], tipy[a], Packages.java.lang.Integer.parseInt(tipx[a]+radius_scan), tipy[a]); 
-=======
-					tipx[a], tipy[a], (tipx[a]+radius_scan).intValue(), tipy[a]); 
->>>>>>> ef0b2f026258c2d93b6371c74635414a0c5f9a7c
 				radius_scanroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 				img2.setRoi(radius_scanroi);
 				var thetastep = 3; 
@@ -545,16 +541,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				IJ.run(img2, "Radial Reslice", "angle=360 degrees_per_slice="+ 
 					IJ.d2s(thetastep, 0)+" direction=Clockwise"); 
 				var radial_3d = IJ.getImage(); 
-<<<<<<< HEAD
 				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, Packages.java.lang.Integer.parseInt(radius_scan-1), 0)); 
 				IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid");
-=======
-				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, (radius_scan-1).intValue(), 0)); 
-				IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid"); 
->>>>>>> ef0b2f026258c2d93b6371c74635414a0c5f9a7c
 				var radial_2d = IJ.getImage(); 
 				IJ.run(radial_2d, "Rotate 90 Degrees Right", ""); 
-				radial_2d.setRoi(new Rectangle(0, 0, nSteps, (radius_scan-1).intValue())); 
+				radial_2d.setRoi(new Rectangle(0, 0, nSteps, Packages.java.lang.Integer.parseInt(radius_scan-1))); 
 				var radial_dist = new Array(nSteps); 
 	 
 				for (var u = 0; u < nSteps; u++) { 
