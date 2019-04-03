@@ -756,7 +756,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						var outline_y = rawpoints.getPolygon().ypoints[j]*dx;
 
 						// iterate over filopodia
-						for (var k = 0; k < fp; k++) {
+						for (var k = 0; k < fparray.length; k++) {
 							//IJ.showMessage("Index "+IJ.d2s(i,0)+" ? "+IJ.d2s(fparray[k].outline_index,0));
 							if (i == fparray[k].cell_index && colinear(
 								fparray[k].x, fparray[k].y, 
@@ -804,7 +804,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					if (filo_spacing) {
 						bandx = new Array(fp);
 						var fpcount = 0;
-						for (var k = 0; k<fp; k++) {
+						for (var k = 0; k < fparray.length; k++) {
 							// parametric crossing position in pixels
 							if (i == fparray[k].cell_index) {
 								bandx[fpcount++] = contour[fparray[k].outline_index] / dx;
@@ -848,7 +848,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						var radstep = 2*Math.PI/bandperimeter*dx; // parametric distance of one pixel in radians
 						var temparray = new Array(fp);
 						var fps = 0;
-						for (var k = 0; k < fp; k++)
+						for (var k = 0; k < fparray.length; k++)
 							if (i == fparray[k].cell_index)
 								temparray[fps++] = (fparray[k].outline_index*dx);
 						// Copy to java array for compatibility with neighbor()
@@ -876,7 +876,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						
 						// reset fp counter
 						var fps = 0;
-						for (var k = 0; k < fp; k++) {	
+						for (var k = 0; k < fparray.length; k++) {	
 							if (i == fparray[k].cell_index) {		
 								var complex_pos = new Complex(
 									Math.cos(fparray[k].outline_index*radstep), 
@@ -1172,7 +1172,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		    //IJ.log("\tTip ID\tTip Intensity\tCell Intensity\tCell ID\tTip:Body Ratio\tTip:Band Ratio");
 
 			// Build results table
-			for (var v = 0; v < fp; v++) { 
+			for (var v = 0; v < fparray.length; v++) { 
 			    filotab.incrementCounter(); 
 			    var cellid = fparray[v].cell_index; 
 			    if (cellid >= 0) { 
