@@ -65,7 +65,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 			for (var j=0; j < imagelist.length; j++) { 
 				var imagename = imagelist[j]; 
 				var imagefile = new File(subdir.getCanonicalPath(), imagename); 
-				if (parseInt(imagename.length()) > acqlen) { 
+				if (Packages.java.lang.Integer.parseInt(imagename.length()) > acqlen) { 
 					if (imagename.substring(0,acqlen) == acqname) { 
 						CopyFile(imagefile, anadir, imagename); 
 					} 
@@ -96,7 +96,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 			} 
  
 			// Read the image ID from the file name and create the analysis subdirectory 
-			if (parseInt(imagename.length()) > acqlen+digits && !imagefile.isDirectory()) { 
+			if (Packages.java.lang.Integer.parseInt(imagename.length()) > acqlen+digits && !imagefile.isDirectory()) { 
 				if (imagename.substring(0,acqlen) == acqname && getExt(imagename) != resultsformat) { 
 					// number subdirectories using the number following the acqname prefix 
 					subdir_index = imagename.substring(acqlen,acqlen+digits); 
@@ -187,7 +187,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 							new Packages.ij.gui.WaitForUserDialog( 
 								"Manual Corrections", "Please press OK when done.").show(); 
 						} 
-						saveImage(mask, maskformat, anadir, subname+"/Capture-mask", parseInt(anaversion)); 
+						saveImage(mask, maskformat, anadir, subname+"/Capture-mask", Packages.java.lang.Integer.parseInt(anaversion)); 
  
 						// Apply the mask to the image (not required, but useful for visual inspection) 
 						ic = new Packages.ij.plugin.ImageCalculator(); 
@@ -196,7 +196,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 							img2.setSlice(frame);
 
 						invertImage(img2); 
-						saveImage(img2, format, anadir, subname+"/Capture-threshold", parseInt(anaversion)); 
+						saveImage(img2, format, anadir, subname+"/Capture-threshold", Packages.java.lang.Integer.parseInt(anaversion)); 
  
 						//Clean up 
 						mask.changes = false; 
@@ -499,7 +499,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		img2.setColor(Color.WHITE); 
 		// Scan in radial pattern (approx 5 um diameter; original radius 12 px at 63X) 
 		var scan_width = 5; 
-		var radius_scan = Math.floor(scan_width/(dx*2)); 
+		var radius_scan = Packages.java.lang.Integer.parseInt(Math.floor(scan_width/(dx*2))); 
 		var fp = 0; 
 		tipx = pRawTips.xpoints; 
 		tipy = pRawTips.ypoints; 
@@ -531,7 +531,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			if (tipx[a] >= radius_scan && tipx[a] < (w-radius_scan) && 
 				tipy[a] >= radius_scan && tipy[a] < (h-radius_scan)) {
 				var radius_scanroi = new Packages.ij.gui.Line( 
-					tipx[a], tipy[a], parseInt(tipx[a]+radius_scan), tipy[a]); 
+					tipx[a], tipy[a], Packages.java.lang.Integer.parseInt(tipx[a]+radius_scan), tipy[a]); 
 				radius_scanroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 				img2.setRoi(radius_scanroi);
 				var thetastep = 3; 
@@ -541,8 +541,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				IJ.run(img2, "Radial Reslice", "angle=360 degrees_per_slice="+ 
 					IJ.d2s(thetastep, 0)+" direction=Clockwise"); 
 				var radial_3d = IJ.getImage(); 
-				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, parseInt(radius_scan-1), 0)); 
-				IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid"); 
+				radial_3d.setRoi(new Packages.ij.gui.Line(0, 0, Packages.java.lang.Integer.parseInt(radius_scan-1), 0)); 
+				IJ.run(radial_3d, "Reslice [/]...", "output="+pixelsize+" slice_count=1 avoid");
 				var radial_2d = IJ.getImage(); 
 				IJ.run(radial_2d, "Rotate 90 Degrees Right", ""); 
 				radial_2d.setRoi(new Rectangle(0, 0, nSteps, (radius_scan-1))); 
@@ -564,7 +564,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				 
 				if (skew > 1) { 
 					pTips.addPoint(tipx[a],tipy[a]); 
-					fp++; 
+					fp++; // increment filo count
 				} 
 			} 
 		} 
@@ -628,6 +628,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				ypos_per_fp[u] = -1;
 				regfp--; 
 			} 
+			//IJ.showMessage("index "+IJ.d2s(u,0)+", cell_per_fp = "+IJ.d2s(cell_per_fp[u],0));
 		} 
 			 
 		// local array for filopodia
@@ -638,6 +639,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				fparray[v] = new Filopod(xpos_per_fp[u]*dx, ypos_per_fp[u]*dx, 
 					pCells.xpoints[cell_per_fp[u]]*dx, pCells.ypoints[cell_per_fp[u]]*dx,
 					cell_per_fp[u], intensity_per_fp[u]);
+				if (fparray[v] == null)
+					IJ.error("Seven.js", "could not initialize filopod "+IJ.d2s(v,0));
 				v++;
 			}
 		}
@@ -696,8 +699,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	    if (!roifile.exists()) { 
 	    	roifile = new File(anadir+"cell-body-RoiSet"+anaversion+"+.roi"); 
 	    } 
-
-	    // begin perimeter band analysis
+		
+		// begin perimeter band analysis
 	    if (banded && roifile.exists()) { 
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
@@ -1261,9 +1264,9 @@ function seven_multi(root, acqname) {
 				var process = false; 
 				var thstring= IJ.d2s(thresholds[th],0); 
 				var minlength = prefix.length + thstring.length(); 
-				if (parseInt(subdirname.length()) > minlength) { 
+				if (Packages.java.lang.Integer.parseInt(subdirname.length()) > minlength) { 
 					var foundthreshold = subdirname.substring(prefix.length, minlength); 
-					if (parseInt(foundthreshold) == thresholds[th]) { 
+					if (Packages.java.lang.Integer.parseInt(foundthreshold) == thresholds[th]) { 
 						process = true; 
 					} 
 				} 
@@ -1275,7 +1278,7 @@ function seven_multi(root, acqname) {
  
 					for (var j=0; j<sublist.length; j++) { 
 						var temp = sublist[j]; 
-						if (linescanonly && parseInt(temp.length()) > 17) { 
+						if (linescanonly && Packages.java.lang.Integer.parseInt(temp.length()) > 17) { 
 							if (temp.substring(0,17) == "Capture-mask-body") { 
 								imagefile = new File(subdir.getCanonicalPath(), sublist[j]); 
 							} 
@@ -1858,10 +1861,10 @@ function kymograph(img0, rs, dt, boxwidth_um, paramtab, resultsdir) {
 	var boxheight = Math.ceil(boxwidth_um/dx); // height in pixels of linescan 
  
 	// set dimensions for the resized image 
-	var hw = parseInt(Math.floor(1.5*img0.getWidth())); 
-	var hh = parseInt(Math.floor(1.5*img0.getHeight())); 
-	var woffset = parseInt(Math.floor(0.25*img0.getWidth())); 
-	var hoffset = parseInt(Math.floor(0.25*img0.getHeight())); 
+	var hw = Packages.java.lang.Integer.parseInt(Math.floor(1.5*img0.getWidth())); 
+	var hh = Packages.java.lang.Integer.parseInt(Math.floor(1.5*img0.getHeight())); 
+	var woffset = Packages.java.lang.Integer.parseInt(Math.floor(0.25*img0.getWidth())); 
+	var hoffset = Packages.java.lang.Integer.parseInt(Math.floor(0.25*img0.getHeight())); 
  
 	// Resize image before loading ROIs - note the offset is added to ROIs later 
 	resize(img0, hw, hh, woffset, hoffset); 
