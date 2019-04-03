@@ -1594,9 +1594,7 @@ filterInt = function (value) {
  
 // get pixel intensity as 24-bit value 
 function getValue(img, x, y) { 
-	var rgba = img.getPixel(x, y); 
-	var intensity = (rgba[0]+1)*(rgba[1]+1)*(rgba[2]+1)-1; 
-	return intensity; 
+	return img.getProcessor().getPixel(x, y);
 } 
  
 function dotnote(a, b) { 
