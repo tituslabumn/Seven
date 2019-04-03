@@ -852,7 +852,12 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							if (i == fparray[k].cell_index)
 								temparray[fps++] = (fparray[k].outline_index*dx);
 						// Copy to java array for compatibility with neighbor()
-						var fp_u = new Packages.java.lang.reflect.Array.newInstance(java.lang.Float, fps); 
+						if (IJ.isJava17()) {
+							var FloatArray = Java.type("float[]");
+							var fp_u = new FloatArray(fps);
+						} else {
+							var fp_u = new Packages.java.lang.reflect.Array.newInstance(java.lang.Float, fps); 
+						}
 						for (var k = 0; k < fps; k++)
 							fp_u[k] = temparray[k];
 
