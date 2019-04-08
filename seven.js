@@ -479,6 +479,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 	} 
 
+	// Copy cell position to global array
+	var cell_xpos = new Array(nCells);
+	var cell_ypos = new Array(nCells);
+	for (var i=0; i<nCells; i++) {
+		cell_xpos[i] = pCells.xpoints[i];
+		cell_ypos[i] = pCells.ypoints[i];
+	}
+
 	if (pCells.npoints > 0) { // only write if populated 
 		var rCells = new Packages.ij.gui.PointRoi(pCells); 
 		rCells.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
@@ -1161,6 +1169,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					+ IJ.d2s(cell_body[u],0)+"Mean Tip Intensity = " 
 					+ IJ.d2s(cell_tipavg[u],0)); 
 					 
+	            celltab.setValue("Cell X (um)", u, cell_xpos[u]*dx); 
+	            celltab.setValue("Cell Y (um)", u, cell_ypos[u]*dx); 
 				celltab.setValue("Number of filopodia", u, fp_per_cell[u]); 
 				celltab.setValue("Mean filopod tip intensity", u, cell_tipavg[u]); 
 				celltab.setValue("Tip:Cell Ratio", u, cell_tipavg[u]/cell_body[u]); 
