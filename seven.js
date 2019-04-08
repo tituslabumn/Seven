@@ -1787,7 +1787,7 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
 	for (var i = 0; i<jsarray.length; i++) { 
-		jsarray[i] = vararray[i]; 
+		jsarray[i] = (vararray[i] > 0) ? vararray[i] : 0; 			
 	} 
  
 	// sort array -- this is not guaranteed by every JavaScript environment, be sure to verify
@@ -1821,7 +1821,9 @@ function neighbor(vararray, maxdist, scale, minimize) {
  
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
-			IJ.showMessage("Neighbor distance failed, must be positive"); 
+			var minimize_string = minimize ? "True" : "False";
+			IJ.showMessage("Neighbor distance failed, must be positive\n Minimize is "+minimize_string+"\n"+
+				IJ.d2s(sorted[i],digits)+", "+IJ.d2s(left[i],digits)+", "+IJ.d2s(maxdist,digits)); 
 		} 
 
 		// copy result to array
