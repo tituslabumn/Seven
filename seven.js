@@ -1406,9 +1406,9 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	// consistency check to verify colinearity
 	this.colinear = function() {
 		var epsilon = 0.4;
-		var ratio = colinear2(this.cell_x, this.cell_y, this.x, this.y, this.cross_x, this.cross_y);
-		var ratio2 = colinear2(this.x, this.y, this.cell_x, this.cell_y, this.cross_x, this.cross_y);
-		var ratio3 = colinear2(this.cross_x, this.cross_y, this.x, this.y, this.cell_x, this.cell_y);
+		var ratio = colinear2(this.x, this.y, this.cell_x, this.cell_y, this.cross_x, this.cross_y);
+		var ratio2 = colinear2(this.cell_x, this.cell_y, this.x, this.y, this.cross_x, this.cross_y);
+		var ratio3 = colinear2(this.cross_x, this.cross_y, this.cell_x, this.cell_y, this.x, this.y);
 		
 		if (Math.abs(ratio-1) < epsilon || Math.abs(ratio2-1) < epsilon || Math.abs(ratio3-1) < epsilon)
 			return true;
