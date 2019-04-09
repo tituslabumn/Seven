@@ -1885,11 +1885,11 @@ function neighbor(vararray, maxdist, scale, minimize) {
 		// calculate immediate neighbors absolute distance 
 		var circ = 0; // implement circularity 
 		var dist = 0; // distance in um
-		if (minimize)
 		circ = (jsarray[i] > left[i]) ? maxdist : 0; 
 		dleft = (left[i] - jsarray[i] + circ) * scale; 
 		circ = (jsarray[i] < right[i]) ? maxdist : 0; 
 		dright = (jsarray[i] - right[i] + circ) * scale; 
+		if (minimize || dright == 0) // if the distance is zero then there is no right or left neighbor
  			dist = (dleft < dright) ? dleft : dright; 
  		else
 			dist = dleft;
