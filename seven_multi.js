@@ -4,7 +4,11 @@ importPackage(Packages.java.io);
 load(IJ.getDirectory("ImageJ")+"seven.js");
 
 var dc = new DirectoryChooser("Choose the experiment analysis directory:");
-var root = new File(dc.getDirectory());
+var dirpath = dc.getDirectory();
+if (dirpath != null)
+	var root = new File(dirpath);
+else
+	IJ.error("Seven.js", "Invalid directory path");
 
 	// fp data - probably not necessary as global (only referenced in AnalyzeTips())
 	var cell_per_fp = new Array(); // global array for registering filopodia to cells
