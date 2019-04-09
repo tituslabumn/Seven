@@ -28,6 +28,7 @@ var once = true;
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
 var minarea_um2 = 1; // minimum area in um^2; prevents glitches caused by very small ROIs 
+var interpolation = 0.5; // scaling factor <= 1 for interpolation of the cell perimeter ROI
 var MEASUREMENTS = Measurements.AREA + Measurements.MEAN + 
 	Measurements.MEDIAN + Measurements.MIN_MAX + Measurements.MODE + 
 	Measurements.SHAPE_DESCRIPTORS + Measurements.PERIMETER +
@@ -732,7 +733,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				if (cell_area_body[i] > minarea_um2) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
-					var interp_polygon = img1.getRoi().getInterpolatedPolygon(0.5, true);
+					//var interp_polygon = img1.getRoi().getPolygon();
+					var interp_polygon = img1.getRoi().getInterpolatedPolygon(interpolation, true);
 					var outline_points = interp_polygon.xpoints.length;
 					var contour = new Array(outline_points);
 					var startroi = new Packages.ij.gui.Arrow(interp_polygon.xpoints[0],  
@@ -843,7 +845,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							bandx = bandpoints.getPolygon().xpoints; 
 						
 						if (bandx != null && bandx.length > 0) {
-							var radstep = 2*Math.PI/bandperimeter*dx; // parametric distance of one pixel in radians
+							var radstep = 2*Math.PI/bandperimeter*interpolation*dx; // parametric distance of one pixel in radians
 							var skewx = skewness(bandx); 
 							var neighborx = neighbor(bandx, bandperimeter, 1, true);	
 							var leftneighborx = neighbor(bandx, bandperimeter, 1, false);	
@@ -869,12 +871,13 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					// main filo analysis
 					if (bandx != null && bandx.length > 0) {
 						// start of neighbor analysis
-						var radstep = 2*Math.PI/bandperimeter*dx; // parametric distance of one pixel in radians
 						var temparray = new Array(fp);
 						var fps = 0;
 						for (var k = 0; k < fparray.length; k++)
 							if (i == fparray[k].cell_index)
 								temparray[fps++] = (fparray[k].outline_index*dx);
+						var radstep = 2*Math.PI/bandperimeter*interpolation*dx; // parametric distance of one pixel in radians
+						
 						// Copy to java array for compatibility with neighbor()
 						if (IJ.isJava17()) {
 							var FloatArray = Java.type("float[]");
