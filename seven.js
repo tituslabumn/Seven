@@ -1433,12 +1433,17 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 	
 	// consistency check to verify colinearity
 	this.colinear = function() {
-		var epsilon = 0.4;
-		var ratio = colinear2(this.x, this.y, this.cell_x, this.cell_y, this.cross_x, this.cross_y);
-		var ratio2 = colinear2(this.cell_x, this.cell_y, this.x, this.y, this.cross_x, this.cross_y);
-		var ratio3 = colinear2(this.cross_x, this.cross_y, this.cell_x, this.cell_y, this.x, this.y);
+		var tolerance = 0.4;
+		var theta = Math.PI/4; // 45 degrees
+		var ratio = colinear2(this.x, this.y, this.cell_x, this.cell_y, this.cross_x, this.cross_y,
+			Math.cos(theta), Math.sin(theta));
+		//var ratio2 = colinear2(this.cell_x, this.cell_y, this.x, this.y, this.cross_x, this.cross_y,
+		//	Math.cos(theta), Math.sin(theta));
+		//var ratio3 = colinear2(this.cross_x, this.cross_y, this.cell_x, this.cell_y, this.x, this.y,
+		//	Math.cos(theta), Math.sin(theta));
 		
-		if (Math.abs(ratio-1) < epsilon || Math.abs(ratio2-1) < epsilon || Math.abs(ratio3-1) < epsilon)
+		//if (Math.abs(ratio-1) < tolerance || Math.abs(ratio2-1) < tolerance || Math.abs(ratio3-1) < tolerance)
+		if (Math.abs(ratio-1) < tolerance)
 			return true;
 		else
 			return false;
@@ -1447,28 +1452,51 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 }
 
 function colinear(x0, y0, x1, y1, x2, y2) {
-	var epsilon = 0.4;
-	var ratio = colinear2(x0, y0, x1, y1, x2, y2);
-	var ratio2 = colinear2(x1, y1, x0, y0, x2, y2);
-	var ratio3 = colinear2(x2, y2, x1, y1, x0, y0);
+	var tolerance = 0.4;
+	var theta = Math.PI/4; // 45 degrees
+	var ratio = colinear2(x0, y0, x1, y1, x2, y2, Math.cos(theta), Math.sin(theta));
+	//var ratio2 = colinear2(x1, y1, x0, y0, x2, y2, costh, sinth);
+	//var ratio3 = colinear2(x2, y2, x1, y1, x0, y0, costh, sinth);
 	
-	if (Math.abs(ratio-1) < epsilon || Math.abs(ratio2-1) < epsilon || Math.abs(ratio3-1) < epsilon)
+	//if (Math.abs(ratio-1) < tolerance || Math.abs(ratio2-1) < tolerance || Math.abs(ratio3-1) < tolerance)
+	if (Math.abs(ratio-1) < tolerance)
 		return true;
 	else
 		return false;
 }
 
-function colinear2(x0, y0, x1, y1, x2, y2) {
+function colinear2(x0, y0, x1, y1, x2, y2, costh, sinth) {
 	var errval = 10;
-	var denom = ((y1-y0)*(x2-x0));
+	var xr0 = rotx(x0, y0, costh, sinth);
+	var yr0 = roty(x0, y0, costh, sinth);
+	var xr1 = rotx(x1, y1, costh, sinth);
+	var yr1 = roty(x1, y1, costh, sinth);
+	var xr2 = rotx(x2, y2, costh, sinth);
+	var yr2 = roty(x2, y2, costh, sinth);
 
-	if ((x0 == x1 && x0 == x2) || (y0 == y1 && y0 == y2))
+	if ((x0 == x1 && x0 == x2) || (y0 == y1 && y0 == y2) ||
+		(xr0 == xr1 && xr0 == xr2) || (yr0 == yr1 && yr0 == yr2))
 		return 1; // the values are colinear
 
+	var denom = ((y1-y0)*(x2-x0));
+	var denom_rot = ((yr1-yr0)*(xr2-xr0));
+	var numerator = (denom == 0) ? ((yr2-yr0)*(xr1-xr0)) : ((y2-y0)*(x1-x0));
+	
 	if (denom != 0)
-		return ((y2-y0)*(x1-x0)) / denom;
-	else
-		return errval;
+		return numerator / denom; // exit and return the ratio using untransformed coordinates
+
+	if (denom_rot != 0)
+			return numerator / denom_rot; // exit and return the ratio using transformed coordinates
+
+	return errval; // exit and return the error value >> 1
+}
+
+function rotx(x, y, costheta, sintheta) {
+	return x * costheta + y * sintheta;
+}
+
+function roty(x, y, costheta, sintheta) {
+	return -x * sintheta + y * costheta;
 }
 
 function lookup(cumulative, input) {
