@@ -824,16 +824,18 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				
 	 				// Set intensity threshold
 					var bandnoise = noise; // defined above based on whole image 
-					var bandx = new Array();
+					var bandx = new Array(); // points of interest on the band (1-D position in um)
 					var filo_spacing = true;
+					var fps = 0;
 
 					if (filo_spacing) {
+						// set up for the main action found after the end of this block
 						bandx = new Array(fp);
-						var fpcount = 0;
 						for (var k = 0; k < fparray.length; k++) {
 							// parametric crossing position in pixels
 							if (i == fparray[k].cell_index) {
-								bandx[fpcount++] = contour[fparray[k].outline_index] / dx;
+								bandx[fps] = contour[fparray[k].outline_index];
+								fps++;
 							}
 						}
 					} else {	
@@ -871,13 +873,22 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					// main filo analysis
 					if (bandx != null && bandx.length > 0) {
 						// start of neighbor analysis
-						var temparray = new Array(fp);
-						var fps = 0;
-						for (var k = 0; k < fparray.length; k++)
-							if (i == fparray[k].cell_index)
-								temparray[fps++] = (fparray[k].outline_index*dx);
 						var radstep = 2*Math.PI/bandperimeter*interpolation*dx; // parametric distance of one pixel in radians
 						
+						if (DEBUG) {
+							// report the mapping from raw pixel (xy, before interpolation) to contour (parametric)
+							for (var k = 0; k < fparray.length; k++) {
+								if (i == fparray[k].cell_index) {
+									// Load the parametric crossing position in um from the fparray
+									//temparray[fps] = contour[fparray[k].outline_index]; fps++;
+									// ----> already done in previous block
+										IJ.showMessage("mapping x (real px) -> u (contour px): \n"+
+											IJ.d2s(fparray[k].outline_index*interpolation,0)+
+											" -> "+IJ.d2s(contour[fparray[k].outline_index]/dx,0));
+								}
+							}
+						}
+							
 						// Copy to java array for compatibility with neighbor()
 						if (IJ.isJava17()) {
 							var FloatArray = Java.type("float[]");
@@ -886,7 +897,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							var fp_u = new Packages.java.lang.reflect.Array.newInstance(java.lang.Float, fps); 
 						}
 						for (var k = 0; k < fps; k++)
-							fp_u[k] = temparray[k];
+							fp_u[k] = bandx[k];
 
 						var skewx = null;
 						var neighborx = null;
@@ -1775,8 +1786,10 @@ function getFileList(dir) {
         list2 = new Array(n); 
         var j = 0; 
         for (var i=0; i<list.length; i++) { 
-            if (list[i]!=null) 
-                list2[j++] = list[i]; 
+            if (list[i]!=null) {
+                list2[j] = list[i]; 
+                j++;
+            }
         } 
         list = list2; 
     } 
