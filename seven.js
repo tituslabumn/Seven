@@ -1845,22 +1845,25 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	
 	//copy java array to jsarray 
 	var jsarray = new Array(vararray.length); 
-	for (var i = 0; i<jsarray.length; i++) { 
-		jsarray[i] = (vararray[i] > 0) ? vararray[i] : 0; 			
+	var left = new Array(vararray.length); 
+	var right = new Array(vararray.length); 
+	for (var i = 0; i<vararray.length; i++) { 
+		jsarray[i] = (vararray[i] > 0) ? vararray[i] : 0; 
+		left[i] = jsarray[i];
+		right[i] = jsarray[i];	
+		
+		if (jsarray[i] > maxdist)
+			IJ.showMessage("bad maxdist parameter, "+IJ.d2s(jsarray[i],digits)+" > "+IJ.d2s(maxdist,digits));		
 	} 
  
-	// sort array -- this is not guaranteed by every JavaScript environment, be sure to verify
-	var sorted = new Array(vararray.length); 
-	sorted = jsarray.slice(); 
-	var left = sorted.slice(); 
-	var right = sorted.slice();  
+	// shift the arrays to compare left and right neighbors
 	var first = left.shift(); 
 	left.push(first); 
 	var last = right.pop(); 
 	right.unshift(last); 
 	 
 	// search for nearest neighbor 
-	for (var i = 0; i<sorted.length; i++) { 
+	for (var i = 0; i<jsarray.length; i++) { 
 			 
 		// Implement circular array 
 		var dleft = 0; 
@@ -1869,11 +1872,11 @@ function neighbor(vararray, maxdist, scale, minimize) {
 		// calculate immediate neighbors absolute distance 
 		var circ = 0; // implement circularity 
 		var dist = 0; // distance in um
-		circ = (sorted[i] > left[i]) ? maxdist : 0; 
-		dleft = (left[i] - sorted[i] + circ) * scale; 
-		circ = (sorted[i] < right[i]) ? maxdist : 0; 
-		dright = (sorted[i] - right[i] + circ) * scale; 
 		if (minimize)
+		circ = (jsarray[i] > left[i]) ? maxdist : 0; 
+		dleft = (left[i] - jsarray[i] + circ) * scale; 
+		circ = (jsarray[i] < right[i]) ? maxdist : 0; 
+		dright = (jsarray[i] - right[i] + circ) * scale; 
  			dist = (dleft < dright) ? dleft : dright; 
  		else
 			dist = dleft;
@@ -1881,8 +1884,8 @@ function neighbor(vararray, maxdist, scale, minimize) {
 		// enforce distance > 0 
 		if (jsarray[i] < 0) { 
 			var minimize_string = minimize ? "True" : "False";
-			IJ.showMessage("Neighbor distance failed, must be positive\n Minimize is "+minimize_string+"\n"+
-				IJ.d2s(sorted[i],digits)+", "+IJ.d2s(left[i],digits)+", "+IJ.d2s(maxdist,digits)); 
+			IJ.showMessage("Neighbor distance failed, input nonpositive\n Minimize is "+minimize_string+"\n"+
+				IJ.d2s(jsarray[i],digits)+", "+IJ.d2s(left[i],digits)+", "+IJ.d2s(maxdist,digits)); 
 		} 
 
 		// copy result to array
