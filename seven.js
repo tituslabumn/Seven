@@ -804,23 +804,24 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					}
 
 					// check for filopodia without crossing assignments
-					var crossing = 0;
+					var noncrossing = 0;
 					for (var k = 0; k < fparray.length; k++) {
 						if  (i == fparray[k].cell_index && fparray[k].outline_index <0) {
 						//	IJ.showMessage("Cell ("+IJ.d2s(fparray[k].cell_x,2)+", "+
 						//		IJ.d2s(fparray[k].cell_y,2)+"); Tip ("+IJ.d2s(fparray[k].x,2)+
 						//		", "+IJ.d2s(fparray[k].y,2)+")");
-							crossing++;
+							noncrossing++;
 						}
 					}
-					if (crossing > 0)
-						IJ.showMessage("missing assignments: "+IJ.d2s(crossing,0));	
+					if (noncrossing > 0)
+						IJ.showMessage("missing assignments: "+IJ.d2s(noncrossing,0));	
 					
 					// Generate banded image from original 
 					img1.setRoi(outline_roi);
 					bandp = narrow.straighten(img1, outline_roi, boxheight);
 					band = new ImagePlus("Perimeter band", bandp);
-					var bandperimeter = outline_roi.getLength();
+					var bandperimeter = outline_roi.getLength(); // maximum perimeter distance in um
+					//var bandperimeter = band.getWidth()*dx; // alternate definition
 				
 	 				// Set intensity threshold
 					var bandnoise = noise; // defined above based on whole image 
