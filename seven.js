@@ -1860,15 +1860,44 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	//
 	// Output value is a distance in um
 
-	// ensure the array is sorted
-	Packages.java.util.Arrays.sort(vararray);
+	// ensure the array is sorted and non-null
+	var n = 0;
+	for (var i = 0; i<vararray.length; i++)
+		if (vararray[i] != null)
+			n++;
+			
+	var order = new Array(n);
+	var sorted = new Array(n); 
+	var temparray = new Array(n); 
+	n = 0;
+	for (var i = 0; i<vararray.length; i++) {
+		if (vararray[i] != null) {
+			temparray[n] = Packages.java.lang.Float.parseFloat(vararray[i]);
+			n++;
+		}
+	}
 	
-	//copy java array to jsarray 
-	var jsarray = new Array(vararray.length); 
-	var left = new Array(vararray.length); 
-	var right = new Array(vararray.length); 
-	for (var i = 0; i<vararray.length; i++) { 
-		jsarray[i] = (vararray[i] > 0) ? vararray[i] : 0; 
+	for (var i = 0; i<n; i++) { 
+		var min_val = Infinity;
+		for (var j = 0; j<n; j++) {
+			if (temparray[j] < min_val) {
+				min_val = Packages.java.lang.Float.parseFloat(temparray[j]);
+				sorted[i] = min_val;
+				order[i] = j;
+			}
+		}
+		if (order[i] != null)
+			temparray[order[i]] = Infinity; // set to find the next smallest value next round
+		//IJ.showMessage(IJ.d2s(order[i],0)+": "+IJ.d2s(sorted[i],3));
+	}
+	
+	// shift the array left and right, ensuring non-negative values
+	var jsarray = new Array(sorted.length); 
+	var result = new Array(sorted.length); 
+	var left = new Array(sorted.length); 
+	var right = new Array(sorted.length); 
+	for (var i = 0; i<sorted.length; i++) { 
+		jsarray[i] = (sorted[i] > 0) ? sorted[i] : 0; 
 		left[i] = jsarray[i];
 		right[i] = jsarray[i];	
 		
@@ -1909,9 +1938,10 @@ function neighbor(vararray, maxdist, scale, minimize) {
 		} 
 
 		// copy result to array
-		jsarray[i] = dist;
+		// result[i] = dist; // old behavior - output in sorted order
+		result[order[i]] = dist; // new behavior - output in original order		
 	} 
-	return jsarray; 
+	return result; 
 } 
  
 function skewness(vararray) { 
