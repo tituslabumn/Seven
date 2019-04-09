@@ -732,25 +732,25 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				if (cell_area_body[i] > minarea_um2) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
-					var rawpoints = img1.getRoi(); 
-					var outline_points = rawpoints.getPolygon().xpoints.length;
+					var interp_polygon = img1.getRoi().getInterpolatedPolygon(0.5, true);
+					var outline_points = interp_polygon.xpoints.length;
 					var contour = new Array(outline_points);
-					var startroi = new Packages.ij.gui.Arrow(rawpoints.getPolygon().xpoints[0],  
-						rawpoints.getPolygon().ypoints[0],rawpoints.getPolygon().xpoints[0]+1,  
-						rawpoints.getPolygon().ypoints[0]+1);
+					var startroi = new Packages.ij.gui.Arrow(interp_polygon.xpoints[0],  
+						interp_polygon.ypoints[0],interp_polygon.xpoints[0]+1,  
+						interp_polygon.ypoints[0]+1);
 					startroi.setPosition(1, frame, 1); // specify which frame (slice) to analyze 
 					img2.setRoi(startroi); 
 					// Draw a 1px line on the masked img2 
 					ip2.draw(startroi); 
 					
 					var narrow = new Packages.ij.plugin.Straightener(); 
-					var outline_roi = outliner(rawpoints.getPolygon(), outline_points, frame);
+					var outline_roi = outliner(interp_polygon, outline_points, frame);
 					var band = new ImagePlus();
 					
 					// initialize contour for lookup of u-coordinate from outline point index
 					for (var j = 0; j<outline_points; j++) {
 						if (j>1) {
-							var this_outline_roi = outliner(rawpoints.getPolygon(), j, frame);
+							var this_outline_roi = outliner(interp_polygon, j, frame);
 							img1.setRoi(this_outline_roi);
 							bandp = narrow.straighten(img1, this_outline_roi, 1);
 							//if (j==2)
@@ -763,8 +763,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 
 					// store crossing xy point and outline point index in filopod data
 					for (var j = 0; j<outline_points; j++) {
-						var outline_x = rawpoints.getPolygon().xpoints[j]*dx;
-						var outline_y = rawpoints.getPolygon().ypoints[j]*dx;
+						var outline_x = interp_polygon.xpoints[j]*dx;
+						var outline_y = interp_polygon.ypoints[j]*dx;
 
 						// iterate over filopodia
 						for (var k = 0; k < fparray.length; k++) {
