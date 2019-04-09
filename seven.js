@@ -721,6 +721,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			for (var i = 0; i < rs.getCount(); i++) { 
 				// begin reporting 
 				celltab.incrementCounter(); 
+				celltab.addValue("Cell ID+1", i+1); 
 				celltab.addValue("Cell Intensity", cell_body[i]); 
 				celltab.addValue("Cell Area (um^2)", cell_area_body[i]); 
 			    //if (fp_per_cell[i] > 0) { // optionally only look at cells with fp 
@@ -937,7 +938,11 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 									fparray[k].neighbor_left_u = leftneighborx[fps];
 									fps++;							
 								}
-							}
+
+								if (DEBUG && i == 0)
+									IJ.showMessage("Compare cross_u = "+IJ.d2s(cross_angle.dist,3)+
+										" vs contour coordinate = "+IJ.d2s(contour[fparray[k].outline_index],3));
+								}
 						}
 						
 						// Cui .. Rice, J Chem Phys, 2002 
@@ -1235,6 +1240,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 			            + IJ.d2s(tipbody, digits) + "\t" 
 			            + IJ.d2s(tipband, digits)); 
 			             
+		            filotab.addValue("Filopod ID+1", v+1); 
+		            filotab.addValue("Cell ID+1", cellid+1); 
 		            filotab.addValue("Tip X (um)", fparray[v].x); 
 		            filotab.addValue("Tip Y (um)", fparray[v].y); 
 		            filotab.addValue("Cross X (um)", fparray[v].cross_x); 
@@ -1251,7 +1258,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		            filotab.addValue("Left neighbor (Delta deg)", fparray[v].neighbor_left_deg()); 
 		            filotab.addValue("Tip intensity", fparray[v].intensity); 
 		            filotab.addValue("Cell intensity", cell_body[cellid]); 
-		            filotab.addValue("Cell ID", cellid); 
 		            filotab.addValue("Tip:Cell Ratio", tipbody); 
 		            filotab.addValue("Tip:Band Ratio", tipband); 
 			    } 
@@ -1628,7 +1634,7 @@ function readValue(textfile, logline, logstring) {
 			if (row.length() >= logstring.length && 
 				row.substring(0, logstring.length) == logstring) { 
 				// read the rest of the line following the logstring 
-				var temp = parseFloat(row.substring(logstring.length,row.length())); 
+				var temp = Packages.java.lang.Float.parseFloat(row.substring(logstring.length,row.length())); 
 				if (temp != null && temp > 0) { 
 					val = temp; 
 				} 
