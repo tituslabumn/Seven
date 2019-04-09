@@ -712,7 +712,10 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	    if (banded && roifile.exists()) { 
 			rs.runCommand("Open",roifile.getCanonicalPath()); 
 			var rois = rs.getRoisAsArray(); 
-						
+			if (rs.getCount() != cell_xpos.length)
+				IJ.error("seven.js", "ROIs != nCells: "+IJ.d2s(rs.getCount(),0)+" != "+
+					IJ.d2s(cell_xpos.length,0));
+
 			// iterate over cells 
 			for (var i = 0; i < rs.getCount(); i++) { 
 				// begin reporting 
@@ -797,6 +800,19 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 								
 						}
 					}
+
+					// check for filopodia without crossing assignments
+					var crossing = 0;
+					for (var k = 0; k < fparray.length; k++) {
+						if  (i == fparray[k].cell_index && fparray[k].outline_index <0) {
+						//	IJ.showMessage("Cell ("+IJ.d2s(fparray[k].cell_x,2)+", "+
+						//		IJ.d2s(fparray[k].cell_y,2)+"); Tip ("+IJ.d2s(fparray[k].x,2)+
+						//		", "+IJ.d2s(fparray[k].y,2)+")");
+							crossing++;
+						}
+					}
+					if (crossing > 0)
+						IJ.showMessage("missing assignments: "+IJ.d2s(crossing,0));	
 					
 					// Generate banded image from original 
 					img1.setRoi(outline_roi);
@@ -1114,7 +1130,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					saveImage(band, format, anadir, "spacing-"+i, anaversion); 
 					band.changes = false; 
 					if (!DEBUG) { band.close(); } 
-				} 
+				} else {
+					IJ.showMessage("Cell area < minimum area: cell ID "+IJ.d2s(i,0));
+				}
 			} 
 			//standardize(cell_band, cell_body, cell_area_band, cell_area_body);  
 		} 
