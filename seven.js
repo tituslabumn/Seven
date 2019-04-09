@@ -27,7 +27,7 @@ var DEBUG = false;
 var once = true;
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
-var minarea = 40; // minimum area = 1 sq um; prevents errors with very small ROIs 
+var minarea_um2 = 1; // minimum area in um^2; prevents glitches caused by very small ROIs 
 var MEASUREMENTS = Measurements.AREA + Measurements.MEAN + 
 	Measurements.MEDIAN + Measurements.MIN_MAX + Measurements.MODE + 
 	Measurements.SHAPE_DESCRIPTORS + Measurements.PERIMETER +
@@ -729,7 +729,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				img1.setRoi(rois[i]); 
 				rs.select(img1, i); 
  
-				if (cell_area_body[i] > minarea) { 
+				if (cell_area_body[i] > minarea_um2) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
 					var rawpoints = img1.getRoi(); 
