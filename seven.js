@@ -1150,9 +1150,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					saveImage(band, format, anadir, "spacing-"+i, anaversion); 
 					band.changes = false; 
 					if (!DEBUG) { band.close(); } 
-				} else {
-					IJ.showMessage("Cell area < minimum area: cell ID "+IJ.d2s(i,0));
-				}
+				} //else {
+					//IJ.showMessage("Cell area < minimum area: cell ID "+IJ.d2s(i,0));
+				//}
 			} 
 			//standardize(cell_band, cell_body, cell_area_band, cell_area_body);  
 		} 
