@@ -1431,14 +1431,14 @@ function Filopod(x, y, cell_x, cell_y, cell_index, intensity) {
 
 	// calculate parametric angles in radians	
 	this.neighbor_near_rad = function () {
-		if (this.neighbor_near_u >= 0)
+		if (this.neighbor_near_u >= 0 && this.cell_perimeter > 0)
 			return this.neighbor_near_u/this.cell_perimeter*2*Math.PI;
 		else
 			return NaN;
 	}
 	
 	this.neighbor_left_rad = function () {
-		if (this.neighbor_left_u >= 0)
+		if (this.neighbor_left_u >= 0 && this.cell_perimeter > 0)
 			return this.neighbor_left_u/this.cell_perimeter*2*Math.PI;
 		else
 			return NaN;

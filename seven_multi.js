@@ -5,10 +5,7 @@ load(IJ.getDirectory("ImageJ")+"seven.js");
 
 var dc = new DirectoryChooser("Choose the experiment analysis directory:");
 var dirpath = dc.getDirectory();
-if (dirpath != null)
-	var root = new File(dirpath);
-else
-	IJ.error("Seven.js", "Invalid directory path");
+var root = (dirpath != null) ? new File(dirpath) : null;
 
 	// fp data - probably not necessary as global (only referenced in AnalyzeTips())
 	var cell_per_fp = new Array(); // global array for registering filopodia to cells
@@ -28,4 +25,8 @@ else
 	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
 
 //    IJ.showMessage("acqname", acqname); 
-seven_multi(root, acqname);
+
+if (root != null)
+	seven_multi(root, acqname);
+else
+	IJ.error("Seven.js", "Invalid directory path");
