@@ -833,6 +833,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 					if (filo_spacing) {
 						// set up for the main action found after the end of this block
 						bandx = new Array(fp);
+						for (var k = 0; k < fp; k++)
+							bandx[fp] = -1; // initialize array to -1
 						for (var k = 0; k < fparray.length; k++) {
 							// parametric crossing position in pixels
 							if (i == fparray[k].cell_index) {
@@ -1337,8 +1339,9 @@ function seven_multi(root, acqname) {
 								imagefile = new File(subdir.getCanonicalPath(), sublist[j]); 
 							} 
 						} else { 
-							var hint = readPaths(subdir.getCanonicalPath()+sep+"hint.txt"); 
-							if (hint.length == 1) { 
+							var hintfile = new File(subdir.getCanonicalPath()+sep+"hint.txt");
+							var hint = (hintfile.exists()) ? readPaths(subdir.getCanonicalPath()+sep+"hint.txt") : null; 
+							if (hint != null && hint.length == 1) { 
 								var imagename = hint[0]; 
 								imagefile = new File(root.getCanonicalPath(), imagename); 
 							} 
