@@ -902,8 +902,9 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 						} else {
 							var fp_u = new Packages.java.lang.reflect.Array.newInstance(java.lang.Float, fps); 
 						}
-						for (var k = 0; k < fps; k++)
-							fp_u[k] = bandx[k];
+						for (var k = 0; k < fps; k++) {
+							fp_u[k] = (bandx[k] != null) ? bandx[k] : -1;
+						}
 
 						var skewx = null;
 						var neighborx = null;
@@ -1865,10 +1866,10 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	//
 	// Output value is a distance in um
 
-	// ensure the array is sorted and non-null
+	// ensure the array is sorted, non-null and non-zero (assuming distances are always non-zero)
 	var n = 0;
 	for (var i = 0; i<vararray.length; i++)
-		if (vararray[i] != null)
+		if (vararray[i] != null && vararray[i] >= 0)
 			n++;
 			
 	var order = new Array(n);
@@ -1876,7 +1877,7 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	var temparray = new Array(n); 
 	n = 0;
 	for (var i = 0; i<vararray.length; i++) {
-		if (vararray[i] != null) {
+		if (vararray[i] != null && vararray[i] >= 0) {
 			temparray[n] = Packages.java.lang.Float.parseFloat(vararray[i]);
 			n++;
 		}
