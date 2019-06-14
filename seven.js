@@ -1866,7 +1866,7 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	//
 	// Output value is a distance in um
 
-	// ensure the array is sorted, non-null and non-zero (assuming distances are always non-zero)
+	// ensure the array is sorted, non-null and non-negative (assuming distances are always non-negative)
 	var n = 0;
 	for (var i = 0; i<vararray.length; i++)
 		if (vararray[i] != null && vararray[i] >= 0)
