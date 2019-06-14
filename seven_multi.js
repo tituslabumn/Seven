@@ -21,12 +21,13 @@ var root = (dirpath != null) ? new File(dirpath) : null;
 	var cell_band = new Array(); // global array for cell band intensity
 	var cell_area_body = new Array(); // global array for area of cell body
 	var cell_area_band = new Array(); // global array for area of band 
+	
+if (root != null) {
 //	var acqname = "Capture "; // KJP convention - Default prefix for input files
-	var acqname = root.getName()+" - "; // ALA convention - Default prefix for input files
+//	var acqname = root.getName()+" - "; // ALA convention - Default prefix for input files
+	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
 
-//    IJ.showMessage("acqname", acqname); 
-
-if (root != null)
 	seven_multi(root, acqname);
-else
+} else {
 	IJ.error("Seven.js", "Invalid directory path");
+}
