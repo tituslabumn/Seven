@@ -97,7 +97,9 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 			} 
  
 			// Read the image ID from the file name and create the analysis subdirectory 
-			if (Packages.java.lang.Integer.parseInt(imagename.length()) > acqlen+digits && !imagefile.isDirectory()) { 
+			var imagename_character_length = Packages.java.lang.Integer.parseInt(imagename.length());
+			//IJ.showMessage("is "+IJ.d2s(imagename_character_length,0)+" > "+IJ.d2s(acqlen+digits,0)+"?");
+			if (imagename_character_length > acqlen+digits && !imagefile.isDirectory()) { 
 				if (imagename.substring(0,acqlen) == acqname && getExt(imagename) != resultsformat) { 
 					// number subdirectories using the number following the acqname prefix 
 					subdir_index = imagename.substring(acqlen,acqlen+digits); 
