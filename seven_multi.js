@@ -22,7 +22,7 @@ var root = (dirpath != null) ? new File(dirpath) : null;
 	var cell_area_body = new Array(); // global array for area of cell body
 	var cell_area_band = new Array(); // global array for area of band 
 //	var acqname = "Capture "; // KJP convention - Default prefix for input files
-	var acqname = root.getName()+"."; // ALA convention - Default prefix for input files
+	var acqname = root.getName()+" - "; // ALA convention - Default prefix for input files
 
 //    IJ.showMessage("acqname", acqname); 
 
