@@ -2,6 +2,7 @@ importPackage(Packages.ij);
 importPackage(Packages.java.io); 
 importPackage(Packages.java.awt); 
 importPackage(Packages.ij.measure); 
+importClass(Packages.ij.gui.GenericDialog);
 load(IJ.getDirectory("ImageJ")+"complex.js");
  
 //// seven.js 
@@ -1315,6 +1316,26 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 } 
 
 function seven_multi(root, acqname) { 
+		
+	var gd = new GenericDialog("seven.js");
+	//gd.addNumericField("Frames to average", reduction, 0);
+	
+	gd.addStringField("Raw data filenames start with:", acqname, 0);
+	gd.addStringField("File extension", format, 0);
+	gd.addNumericField("Frame to analyze", frame, 0);
+	gd.addNumericField("Minimum cell area (um sq.)", minarea_um2, 0);
+	gd.addCheckbox("Manual input for mask corrections", semi);
+	gd.addCheckbox("Additional debugging messages", DEBUG);
+	gd.showDialog();
+	if (! gd.wasCanceled()) {
+		acqname = gd.getNextString();
+		format = gd.getNextString();
+		frame = Math.floor(gd.getNextNumber()); // truncate to integer
+		minarea_um2 = gd.getNextNumber();
+		semi = gd.getNextBoolean();
+		DEBUG = gd.getNextBoolean();
+	}
+	
 	var dirlist = root.list(); 
 	var acqlen = acqname.length; 
 	var prefix = "sliced_frame"+IJ.pad(frame,4)+"_"; 
