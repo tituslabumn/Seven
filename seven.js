@@ -455,8 +455,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	var ip2 = img2.getProcessor(); 
 	// Save an intermediate image with cells masked in white; this gets used in "linescanonly" mode 
 	saveImage(img2, format, anadir, "Capture-mask-body"+anaversion, 0); 
-	if (!DEBUG) { mask.close(); } 
- 
+  
 	IJ.run(img2, "Find Maxima...", 
 		"noise="+IJ.d2s(noise,0)+" output=[Point Selection]"); 
 	var rRaw = img2.getRoi(); 
@@ -477,17 +476,17 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
  
 	for (var i=0; i<nPoints; i++) { 
 		val = getValue(img2, tipx[i], tipy[i]); 
-        IJ.doWand(img2, tipx[i], tipy[i], 0, "4-connected"); 
-        var roi_stats = img2.getStatistics();
-		var ip2 = img2.getProcessor();
-		ip2.setColor(Color.BLACK); 
+        IJ.doWand(mask, tipx[i], tipy[i], 0, "4-connected"); 
+        var roi_stats = mask.getStatistics();
+		var maskp = mask.getProcessor();
+		maskp.setColor(Color.GRAY); 
         
 		if (val == maxval) { 
 			if (roi_stats.area >= minarea_um2) {
 				nCells++; 
 				pCells.addPoint(tipx[i],tipy[i]); 
 			} else {
-				ip2.fill(img2.getRoi()); // blackout the current ROI
+				maskp.fill(mask.getRoi()); // blackout the current ROI - indicates these ROIs are ignored
 			}
 		} else { 
 			nRawTips++; 
@@ -495,6 +494,14 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		} 
 	} 
 
+	// Save mask
+	invertImage(mask);
+	saveImage(mask, maskformat, anadir, "Capture-mask-cells"+anaversion, 0); 
+	mask.changes = false;
+
+	// Clean up from masking 
+	if (!DEBUG) { mask.close(); } 
+	
 	// Copy cell position to global array
 	var cell_xpos = new Array(nCells);
 	var cell_ypos = new Array(nCells);
@@ -951,6 +958,8 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 								fparray[k].cross_u = cross_angle.dist;
 								fparray[k].cross_rad = cross_angle.rad;
 								fparray[k].cross_deg = cross_angle.deg;
+								if (neighborx.length <= fps)
+									IJ.error("fps");
 								if (neighborx != null) {
 									fparray[k].neighbor_near_u = neighborx[fps];
 									fparray[k].neighbor_left_u = leftneighborx[fps];
