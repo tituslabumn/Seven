@@ -24,7 +24,6 @@ var LOCAL_AUTO = -1;
 var GLOBAL_AUTO = 0; 
 var digits = 6; // number of significant digits for logging
 var DEBUG = false; 
-var once = true;
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
 var minarea_um2 = 30; // minimum area in um^2; prevents glitches caused by very small ROIs 
@@ -836,7 +835,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 							noncrossing++;
 						}
 					}
-					if (noncrossing > 0)
+					if (DEBUG && noncrossing > 0)
 						IJ.showMessage("missing assignments: "+IJ.d2s(noncrossing,0));	
 					
 					// Generate banded image from original 
@@ -958,8 +957,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 								fparray[k].cross_u = cross_angle.dist;
 								fparray[k].cross_rad = cross_angle.rad;
 								fparray[k].cross_deg = cross_angle.deg;
-								if (neighborx.length <= fps)
-									IJ.error("fps");
+
 								if (neighborx != null) {
 									fparray[k].neighbor_near_u = neighborx[fps];
 									fparray[k].neighbor_left_u = leftneighborx[fps];
@@ -1189,7 +1187,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 		if (!DEBUG) { img1.close(); } 
  
 		if (!skiptips) { 
-			if (regcross != regfp)
+			if (DEBUG && regcross != regfp)
 				IJ.error("Seven.js", "Number of crossing points ("+
 					IJ.d2s(regcross,0)+") != Number of registered filopodia ("+
 					IJ.d2s(regfp,0)+")"); 
