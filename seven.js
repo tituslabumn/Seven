@@ -455,8 +455,6 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 	var ip2 = img2.getProcessor(); 
 	// Save an intermediate image with cells masked in white; this gets used in "linescanonly" mode 
 	saveImage(img2, format, anadir, "Capture-mask-body"+anaversion, 0); 
- 
-	// Clean up from masking 
 	if (!DEBUG) { mask.close(); } 
  
 	IJ.run(img2, "Find Maxima...", 
@@ -1866,7 +1864,7 @@ function noiseThreshold(stats, minSNR) {
 		noise = minSNR*baseline; 
 	} 
 	return noise; 
-} 
+}
  
 function neighbor(vararray, maxdist, scale, minimize) { 
 	// this function copies an array of x values, ensures they are sorted and then
@@ -1881,10 +1879,10 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	//
 	// Output value is a distance in um
 
-	// ensure the array is sorted, non-null and non-negative (assuming distances are always non-negative)
+	// ensure the array is sorted, non-null
 	var n = 0;
 	for (var i = 0; i<vararray.length; i++)
-		if (vararray[i] != null && vararray[i] >= 0)
+		if (vararray[i] != null)
 			n++;
 			
 	var order = new Array(n);
@@ -1892,7 +1890,7 @@ function neighbor(vararray, maxdist, scale, minimize) {
 	var temparray = new Array(n); 
 	n = 0;
 	for (var i = 0; i<vararray.length; i++) {
-		if (vararray[i] != null && vararray[i] >= 0) {
+		if (vararray[i] != null) {
 			temparray[n] = Packages.java.lang.Float.parseFloat(vararray[i]);
 			n++;
 		}
@@ -1911,14 +1909,32 @@ function neighbor(vararray, maxdist, scale, minimize) {
 			temparray[order[i]] = Infinity; // set to find the next smallest value next round
 		//IJ.showMessage(IJ.d2s(order[i],0)+": "+IJ.d2s(sorted[i],3));
 	}
+
+	// count the number of negative values in the array
+	var start_index = -1;
+	for (var i = n-1; i>=0; i--) {
+		if (sorted[i] >= 0) { start_index = i; }
+	}
+	if (start_index < 0) { IJ.error("seven.js", "invalid list of crossing positions"); }
+
+	// copy the non-negative values to a new array
+	var sorted2 = new Array(sorted.length - start_index);
+	var result2 = new Array(sorted.length - start_index);
+	if (start_index == 0) {
+		sorted2 = sorted;
+	} else {
+		for (var i = 0; i<sorted2.length; i++) { 
+			sorted2[i] = sorted[start_index+i]; 
+		}
+	}
 	
 	// shift the array left and right, ensuring non-negative values
-	var jsarray = new Array(sorted.length); 
-	var result = new Array(sorted.length); 
-	var left = new Array(sorted.length); 
-	var right = new Array(sorted.length); 
-	for (var i = 0; i<sorted.length; i++) { 
-		jsarray[i] = (sorted[i] > 0) ? sorted[i] : 0; 
+	var jsarray = new Array(sorted2.length); 
+	var result = new Array(sorted2.length); 
+	var left = new Array(sorted2.length); 
+	var right = new Array(sorted2.length); 
+	for (var i = 0; i<sorted2.length; i++) { 
+		jsarray[i] = sorted2[i]; 
 		left[i] = jsarray[i];
 		right[i] = jsarray[i];	
 		
@@ -1957,11 +1973,16 @@ function neighbor(vararray, maxdist, scale, minimize) {
 			IJ.showMessage("Neighbor distance failed, input nonpositive\n Minimize is "+minimize_string+"\n"+
 				IJ.d2s(jsarray[i],digits)+", "+IJ.d2s(left[i],digits)+", "+IJ.d2s(maxdist,digits)); 
 		} 
+		
+		if (isNaN(dist))
+			IJ.error("seven.js", "neighbor(): invalid distance");
+		result2[i] = dist;
+	}
 
-		// copy result to array
-		// result[i] = dist; // old behavior - output in sorted order
-		result[order[i]] = dist; // new behavior - output in original order		
-	} 
+	// copy result to array - writing -1 for missing data
+	for (var i = 0; i < sorted.length; i++)
+		result[order[i]] = (i >= start_index) ? result2[i-start_index] : -1;
+		
 	return result; 
 } 
  
@@ -2346,7 +2367,7 @@ function smooth(intensities, smoothwidth) {
 		IJ.showMessage("Array is too small for circular smoothing");
 		return null;
 	}
-}
+} 
 
 function Angle(rad, steps, scale) {
 	// This object reports angular values in radians or degrees and pathlength values in pixels or um
@@ -2369,4 +2390,4 @@ function Angle(rad, steps, scale) {
 	this.toString = function() {
 		return IJ.d2s(this.deg, digits) + " deg.";
 	}
-}
+}  
