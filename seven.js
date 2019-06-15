@@ -45,7 +45,7 @@ var minfp = 1; // set to 1 unless you know what this does
 var banded = true; // Whether to look at cell perimeter band 
 var thresholdcode = LOCAL_AUTO; // see list above 
 var skiptips = false; // skip filopod tip search 
-var semi = true; // set to true to wait for manual corrections - recommended with local thresholds 
+var semi = false; // set to true to wait for manual corrections - recommended with local thresholds 
 var editlinescans = false; // manual editing of manual ROIs after they are loaded 
 var onlyreviewlinescans = false; // manual review of linescans but don't overwrite
  
@@ -146,14 +146,14 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 						// Apply threshold to create the mask 
 						switch(th) { 
 							case GLOBAL_AUTO:	// Global threshold (calculated using entire XY image) 
-								IJ.run(mask, "8-bit", ""); 
+								IJ.run(mask, "8-bit", "stack"); 
 								IJ.setAutoThreshold(mask, "Moments stack"); 
 								IJ.run(mask, "Convert to Mask", "method=Moments background=Light stack"); 
 								break; 
  
 							case WATER_AUTO: 
 							case LOCAL_AUTO:	// Local threshold (Bernsen algorithm) 
-								IJ.run(mask, "8-bit", ""); 
+								IJ.run(mask, "8-bit", "stack"); 
 								// Length scale for local thresholds = 2x the mask radius 
 								var bernsen_width_um = 4; 
 								var radius_th = Math.ceil(bernsen_width_um/dx); 
@@ -164,6 +164,9 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 									// Use watershed to separate neighboring cells 
 									IJ.run(mask, "Watershed", "stack"); 
 								} 
+								// cleanup for local thresholding artifacts
+								IJ.run(mask, "Fill Holes", "stack"); // fills holes in nuclei unless they are on the edge of the field
+								IJ.run(mask, "Open", "stack"); // zaps 1-pixel wide features
 								invertImage(mask); 
 								break; 
  
@@ -171,7 +174,7 @@ function ThresholdCells(anadir, acqname, thresholds, prefix) {
 								if (th < 0) 
 									IJ.showMessage("Invalid image threshold!"); 
 								IJ.setThreshold(mask, 0, th); 
-								IJ.run(mask, "8-bit", ""); 
+								IJ.run(mask, "8-bit", "stack"); 
 								IJ.run(mask, "Convert to Mask", "method=Moments background=Light stack"); 
 							} 
  
@@ -266,7 +269,6 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_
  
     // invert image 
     invertImage(img2); 
-    saveImage(img2, format, anadir, "Capture-mask-"+resultname+anaversion, 0); 
  
 	// return to original image for quantitation 
 	var rs = new RoiSet(); 
@@ -275,12 +277,16 @@ function AnalyzeCells(img1, anadir, depth, resultname, intensities, areas, cell_
     var maskcal = mask.getCalibration(); 
 	cm2um(maskcal); 
 	var maskstats = mask.getStatistics(MEASUREMENTS); 
+	
 	// this is where the cell outlines are stored as ROIs
     for (var i = 0; i < xs.length; i++) { 
         IJ.doWand(mask, xs[i], ys[i], 0, "4-connected"); 
 		StoreRoi(mask, mask.getRoi(), resultname+" "+IJ.d2s(i,0), rs); 
     } 
- 
+
+ 	// save mask 
+    saveImage(img2, format, anadir, "Capture-mask-"+resultname+anaversion, 0); 
+    
     // save rois 
     rs.runCommand("Select All"); 
     rs.runCommand("Save", anadir + "cell-"+resultname+"-RoiSet"+anaversion+".zip"); 
