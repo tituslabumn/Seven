@@ -27,7 +27,7 @@ var DEBUG = false;
 var once = true;
 var dt = 0.793; // default timestep in seconds if not available from logfile
 var boxwidth_um = 0.8; // height in microns of linescan 
-var minarea_um2 = 1; // minimum area in um^2; prevents glitches caused by very small ROIs 
+var minarea_um2 = 30; // minimum area in um^2; prevents glitches caused by very small ROIs 
 var interpolation = 0.5; // scaling factor <= 1 for interpolation of the cell perimeter ROI
 var MEASUREMENTS = Measurements.AREA + Measurements.MEAN + 
 	Measurements.MEDIAN + Measurements.MIN_MAX + Measurements.MODE + 
@@ -479,9 +479,18 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
  
 	for (var i=0; i<nPoints; i++) { 
 		val = getValue(img2, tipx[i], tipy[i]); 
+        IJ.doWand(img2, tipx[i], tipy[i], 0, "4-connected"); 
+        var roi_stats = img2.getStatistics();
+		var ip2 = img2.getProcessor();
+		ip2.setColor(Color.BLACK); 
+        
 		if (val == maxval) { 
-			nCells++; 
-			pCells.addPoint(tipx[i],tipy[i]); 
+			if (roi_stats.area >= minarea_um2) {
+				nCells++; 
+				pCells.addPoint(tipx[i],tipy[i]); 
+			} else {
+				ip2.fill(img2.getRoi()); // blackout the current ROI
+			}
 		} else { 
 			nRawTips++; 
 			pRawTips.addPoint(tipx[i],tipy[i]); 
@@ -739,7 +748,7 @@ function AnalyzeTips(img1, imagefile, anadir, imagetab, boxwidth_um, firstpass) 
 				img1.setRoi(rois[i]); 
 				rs.select(img1, i); 
  
-				if (cell_area_body[i] > minarea_um2) { 
+				if (cell_area_body[i] >= minarea_um2) { 
 					// convert magic wand ROI to line ROI 
 					//IJ.run(img1, "Area to Line", ""); // this leaves a gap at end 
 					//var interp_polygon = img1.getRoi().getPolygon();
